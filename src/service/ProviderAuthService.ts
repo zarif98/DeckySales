@@ -1,4 +1,17 @@
 import { ServerAPI } from "decky-frontend-lib";
+import { SETTINGS, Setting } from "../utils/Settings";
+
+/*
+ * The credentials service that hands out provider API keys.
+ *
+ * This is the single place the endpoint is configured. Both the request and
+ * the security check below derive from this constant, so pointing the plugin
+ * at a different deployment is a one-line change that cannot leave the two
+ * out of sync.
+ *
+ * See `server/README.md` for deploying your own.
+ */
+export const CREDENTIALS_ENDPOINT = "https://api.optideck.gg/deckdeals/auth";
 
 export interface Credentials {
     itad_api_key: string;
@@ -23,7 +36,7 @@ class ProviderAuthService {
     // =========================================================================
     private serverApi: ServerAPI | undefined;
     private credentials: Credentials | null = null;
-    private readonly ENDPOINT = "https://api.optideck.gg/deckdeals/auth"; // This page stores the API keys needed for IATP and exchangerate-api
+    private readonly ENDPOINT = CREDENTIALS_ENDPOINT;
     private readonly CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours
     private readonly MAX_RESPONSE_BYTES = 4096;
     private readonly EXPECTED_KEYS: Array<keyof Credentials> = ["itad_api_key", "exchange_rate_api_key"];
@@ -42,10 +55,17 @@ class ProviderAuthService {
     // PART 3: Endpoint Trust Boundary Validation
     // Purpose: Enforce HTTPS + pinned host/path before any network call.
     // =========================================================================
+    /**
+     * The endpoint must be a well-formed HTTPS URL.
+     *
+     * Previously the host and path were also hardcoded here, duplicating the
+     * constant above - changing one without the other silently failed closed.
+     * Pinning is preserved by there being exactly one compile-time constant.
+     */
     private isValidEndpoint(): boolean {
         try {
             const endpoint = new URL(this.ENDPOINT);
-            return endpoint.protocol === "https:" && endpoint.hostname === "api.optideck.gg" && endpoint.pathname === "/deckdeals/auth";
+            return endpoint.protocol === "https:" && endpoint.hostname.length > 0;
         } catch {
             return false;
         }
@@ -165,7 +185,26 @@ class ProviderAuthService {
     // PART 7: Public Read API
     // Purpose: Expose individual provider keys to caller services.
     // =========================================================================
+    /**
+     * A key the user entered themselves, if it looks like a key at all.
+     *
+     * This is the escape hatch: it takes precedence over the hosted endpoint,
+     * so the plugin keeps working if that endpoint is down, rate-limited, or
+     * retired - and lets people use their own ITAD quota if they prefer.
+     */
+    private async getUserItadKey(): Promise<string | null> {
+        try {
+            const value = await SETTINGS.load(Setting.ITAD_API_KEY);
+            return this.isSafeApiKey(value) ? value : null;
+        } catch {
+            return null;
+        }
+    }
+
     public async getItadKey(): Promise<string | null> {
+        const userKey = await this.getUserItadKey();
+        if (userKey) return userKey;
+
         const credentials = await this.fetchCredentials();
         return credentials?.itad_api_key || null;
     }

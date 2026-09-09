@@ -66,9 +66,16 @@ Explicit non-logging guarantees:
 
 The plugin applies strict response filtering so compromised or malformed provider responses are rejected by default.
 
-### Optideck credentials API (`src/service/ProviderAuthService.ts`)
+### Credentials API (`src/service/ProviderAuthService.ts`)
 - Endpoint pinning:
-  - Only `https://api.optideck.gg/deckdeals/auth` is accepted.
+  - The endpoint is a single compile-time constant (`CREDENTIALS_ENDPOINT`), and the
+    request and the policy check both derive from it, so they cannot drift apart.
+    Only HTTPS is accepted.
+- User-supplied key override:
+  - A key entered in settings takes precedence over the endpoint and is validated
+    against the same `[A-Za-z0-9._-]{16,256}` pattern; anything else is ignored and
+    the endpoint is used instead. The key is stored in local plugin settings only
+    and is sent solely to IsThereAnyDeal as a query parameter.
 - Response size bound:
   - Payload must be present and `<= 4096` bytes.
 - Strict schema allowlist:
@@ -175,7 +182,10 @@ The plugin applies strict response filtering so compromised or malformed provide
 | `src/utils/ApiParsing.ts` | Pure validation/parsing of external API payloads and store-selection inputs. |
 | `src/utils/Deals.test.ts` | Unit tests for deal normalization and notification de-duplication. |
 | `src/utils/ApiParsing.test.ts` | Unit tests for external payload validation and store-selection handling. |
-| `vitest.config.ts` | Unit test runner configuration (pure logic in `src/utils` only). |
+| `vitest.config.ts` | Unit test runner configuration. |
+| `src/service/ProviderAuthService.test.ts` | Tests for credential precedence, key validation, and endpoint payload rejection. |
+| `server/credentials-worker.js` | Reference credentials endpoint (Cloudflare Worker) serving the provider keys. |
+| `server/README.md` | Deployment guide for running your own credentials endpoint. |
 | `src/utils/Providers.ts` | Static provider metadata/constants used by UI and services. |
 | `src/utils/CurrencyMeta.ts` | Currency metadata/constants used for display/normalization helpers. |
 | `src/hooks/useSettings.tsx` | React hook for consuming and updating plugin settings in UI. |

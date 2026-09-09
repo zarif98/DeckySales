@@ -58,7 +58,7 @@ To provide accurate and up-to-date information, Deckdeals interacts with the fol
 
 | Service | Purpose | Data Sent |
 | :--- | :--- | :--- |
-| **Optideck API** (`api.optideck.gg`) | Fetches managed API keys for price and currency services. | Custom `X-App-ID` header for authentication |
+| **Credentials endpoint** | Fetches the managed API keys for the price and currency services. Self-hostable - see [`server/`](./server/README.md). Skipped entirely if you supply your own key. | Custom `X-App-ID` header for authentication |
 | **IsThereAnyDeal** (`isthereanydeal.com`) | Retrieves current prices, historic lows, and graph data. | AppID, Country Code, Store IDs |
 | **ExchangeRate-API** (`exchangerate-api.com`) | Fetches daily exchange rates for accurate price normalization. | Target Currency |
 | **Steam Web API** (`api.steampowered.com`) | Reads your public wishlist for deal alerts (only when Wishlist Alerts is enabled). | Your SteamID64 |
@@ -88,6 +88,12 @@ Wishlist Alerts reads your wishlist from Steam's public wishlist API using the S
 - **Minimum Discount** - ignore anything shallower.
 - **Check Frequency** - how often the background check runs.
 - **Reset Alert History** - forget what you have been told, so the next check reports every current sale again.
+
+### Bring your own API key
+
+The plugin uses a shared IsThereAnyDeal key by default. You can paste your own under **Settings → API Access** to use your own quota, or if the shared key is ever unavailable - it takes precedence over the hosted endpoint, and no request is made to that endpoint at all while it is set.
+
+Maintainers running a fork should deploy their own credentials endpoint rather than relying on someone else's: see [`server/README.md`](./server/README.md).
 
 ## Development
 

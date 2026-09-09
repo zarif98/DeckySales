@@ -18,6 +18,7 @@ export function useSettings() {
   const [wishlistAlerts, setWishlistAlerts] = useState<boolean>(SETTINGS.defaults.wishlistAlerts);
   const [wishlistMinDiscount, setWishlistMinDiscount] = useState<number>(SETTINGS.defaults.wishlistMinDiscount);
   const [wishlistCheckHours, setWishlistCheckHours] = useState<number>(SETTINGS.defaults.wishlistCheckHours);
+  const [itadApiKey, setItadApiKey] = useState<string>(SETTINGS.defaults.itadApiKey);
 
   useEffect(() => {
     let mounted = true;
@@ -73,6 +74,10 @@ export function useSettings() {
       const loadedCheckHours = await SETTINGS.load(Setting.WISHLIST_CHECK_HOURS);
       if (!mounted) return;
       if (loadedCheckHours !== undefined) setWishlistCheckHours(Number(loadedCheckHours));
+
+      const loadedItadKey = await SETTINGS.load(Setting.ITAD_API_KEY);
+      if (!mounted) return;
+      if (loadedItadKey !== undefined) setItadApiKey(String(loadedItadKey));
 
       const loadedLocale = await SETTINGS.load(Setting.LOCALE);
       if (!mounted) return;
@@ -176,6 +181,12 @@ export function useSettings() {
     void wishlistService.restart();
   }
 
+  const saveItadApiKey = (key: string) => {
+    const trimmed = key.trim();
+    setItadApiKey(trimmed);
+    SETTINGS.save(Setting.ITAD_API_KEY, trimmed);
+  }
+
   const saveLocale = (l: string) => {
     setLocaleState(l);
     setLocale(l);
@@ -212,5 +223,7 @@ export function useSettings() {
     saveWishlistMinDiscount,
     wishlistCheckHours,
     saveWishlistCheckHours,
+    itadApiKey,
+    saveItadApiKey,
   }
 }

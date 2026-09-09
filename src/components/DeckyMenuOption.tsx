@@ -1,5 +1,5 @@
 import { useSettings } from '../hooks/useSettings'
-import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, ToggleField } from 'decky-frontend-lib'
+import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from 'decky-frontend-lib'
 import { STORES } from '../utils/Stores';
 import { PROVIDERS } from '../utils/Providers';
 import { useEffect, useState } from 'react';
@@ -36,6 +36,8 @@ const DeckyMenuOption = () => {
     saveWishlistMinDiscount,
     wishlistCheckHours,
     saveWishlistCheckHours,
+    itadApiKey,
+    saveItadApiKey,
   } = useSettings();
 
   const [wishlistChecking, setWishlistChecking] = useState(false);
@@ -637,6 +639,24 @@ const DeckyMenuOption = () => {
             </PanelSectionRow>
           </>
         )}
+      </PanelSection>
+
+      <PanelSection title={t("settings.api.title")}>
+        <PanelSectionRow>
+          <TextField
+            label={t("settings.api.itadKey.label")}
+            description={t("settings.api.itadKey.description")}
+            value={itadApiKey}
+            bIsPassword={true}
+            bShowClearAction={true}
+            onChange={(e) => saveItadApiKey(e.target.value)}
+          />
+        </PanelSectionRow>
+        <PanelSectionRow>
+          <div style={{ fontSize: '11px', color: itadApiKey ? '#beee11' : '#8f98a0', padding: '0 10px' }}>
+            {itadApiKey ? t("settings.api.itadKey.active") : t("settings.api.itadKey.shared")}
+          </div>
+        </PanelSectionRow>
       </PanelSection>
 
       <PanelSection title={t("settings.about.title")}>
