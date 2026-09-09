@@ -142,7 +142,7 @@ Reviewers should start with the [Security Review Notes](./.github/DOCUMENTATION/
 
 ## Contributing
 
-Translations especially welcome:
+Translations especially welcome. Russian and Ukrainian currently include machine-translated strings for the features added in this fork, marked with a comment in each file — corrections from native speakers are particularly valuable:
 
 1. Copy `src/l10n/template.ts` → `src/l10n/<lang>.ts` (e.g. `de.ts`).
 2. Fill in the strings.
