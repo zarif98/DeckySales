@@ -16,7 +16,7 @@ This guide explains how to fork this repo and generate an installable Decky ZIP 
 
 ```bash
 git clone https://github.com/zarif98/DeckySales.git
-cd deckysales
+cd DeckySales
 ```
 
 ## 2. Install dependencies
