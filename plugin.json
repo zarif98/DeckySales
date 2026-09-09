@@ -10,8 +10,8 @@
       "Wishlist"
     ],
     "description": "See the cheapest price available right now across ~30 stores on any Steam store page, and get notified when a wishlisted game goes on sale anywhere - not just on Steam. Forked from Deckdeals by ebdevag.",
-    "resourceLink": "",
-    "image": ""
+    "resourceLink": "https://github.com/zarif98/DeckySales",
+    "image": "https://raw.githubusercontent.com/zarif98/DeckySales/main/.github/DOCUMENTATION/images/best-price-now.jpeg"
   },
   "version": "1.2.0",
   "main": "main.py"
