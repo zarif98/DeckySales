@@ -112,7 +112,8 @@ Tests cover two layers:
 `decky-frontend-lib` cannot load outside the Steam client, so vitest aliases it to a stub in `src/test/` that records navigation calls. Only the Steam store DOM injection and on-screen rendering need real hardware.
 
 > [!IMPORTANT]
-> `@types/node` is pinned to v18 deliberately. TypeScript 4.7 cannot parse newer versions — it fails with syntax errors inside the `.d.ts` and aborts *before reaching `src/`*, silently type-checking nothing. If you bump it, confirm `pnpm typecheck` still reports errors in `src/` paths rather than in `node_modules`.
+> Use **pnpm**, not npm. The lockfile pins `@types/node` to a version TypeScript 4.9 can parse; installing with npm resolves a newer one whose `.d.ts` fails to parse, and `tsc` then aborts inside `node_modules` before reaching `src/` — type checking the whole project into silence. If `pnpm typecheck` ever reports errors in `node_modules` paths, that is the cause.
+
 
 ## Releases
 

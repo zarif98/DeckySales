@@ -1,0 +1,43 @@
+version: 2
+
+# Dependabot opens PRs against this repo; CI (type check, 125 tests, build and
+# a packaging check) runs on each one, so a breaking bump shows up as a red
+# check rather than as a broken release.
+#
+# @types/react is pinned on purpose and must not be bumped - see the ignore
+# rule below.
+
+updates:
+  - package-ecosystem: "npm" # covers pnpm; the lockfile is pnpm v9
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+
+    # One PR for the routine stuff, individual PRs for majors so each gets
+    # looked at properly rather than buried in a batch.
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+
+    ignore:
+      # Steam's UI supplies React itself - the plugin renders into it via
+      # window.SP_REACT (see tsconfig jsxFactory), which is React 16. Typing
+      # against React 18/19 would describe an API that is not there at runtime.
+      - dependency-name: "@types/react"
+        update-types:
+          ["version-update:semver-major", "version-update:semver-minor"]
+
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels: ["dependencies", "ci"]
+    groups:
+      actions:
+        patterns: ["*"]
