@@ -1,5 +1,5 @@
 export const ru: Record<string, string> = {
-    "plugin.title": "Deckdeals",
+    "plugin.title": "DeckySales",
     // Settings UI
     "language.name": "Русский",
     "settings.general.title": "Общие",
@@ -8,7 +8,7 @@ export const ru: Record<string, string> = {
     "settings.about.title": "О программе",
     "settings.language.title": "Язык",
     "settings.common.selectedPrefix": "Выбрано:",
-    "settings.enable.label": "Включить Deckdeals",
+    "settings.enable.label": "Включить DeckySales",
     "settings.enable.description": "Показывать информацию о ценах на страницах магазина",
     "settings.dateFormat.label": "Формат даты",
     "settings.dateFormat.description": "Выберите предпочитаемый формат даты",
@@ -54,10 +54,10 @@ export const ru: Record<string, string> = {
     "attribution.line1": "Источник: IsThereAnyDeal (ITAD) API",
     "attribution.line2": "Источник: exchangerate-api.com",
     "attribution.line3": "Вдохновение: IsThereAnyDeal Decky Plugin от JtdeGraaf",
-    "attribution.line4": "Deckdeals от Optideck • github.com/draftdev-sd/optideck-deckdeals",
+    "attribution.line4": "DeckySales от Optideck • github.com/draftdev-sd/deckysales",
 
     // Store page (injected into Steam browser)
-    "store.title": "Deckdeals",
+    "store.title": "DeckySales",
     "store.currentPrice": "Текущая цена",
     "store.historyDisclaimer": "История цен за последние {period}",
     "store.loading": "Загрузка...",

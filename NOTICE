@@ -1,0 +1,36 @@
+DeckySales
+Copyright (C) 2026 zarif98
+
+This program is a fork of Deckdeals.
+
+    Deckdeals
+    Copyright (C) 2026 Elias (ebdevag)
+    https://github.com/ebdevag/optideck-deckdeals
+
+The great majority of this program — the Steam store page injection, the
+price history graph and sale prediction, the currency normalisation tables,
+the settings interface and the IsThereAnyDeal integration it is all built on —
+is his work, and remains his copyright.
+
+Russian and Ukrainian translations
+    Copyright (C) 2026 Eugene Chefranov
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. See the LICENSE file for the full text.
+
+Changes made in this fork, as required by section 5(a) of the GPL:
+
+  - The store page headlines the cheapest price currently available across all
+    selected stores, rather than the all-time historic low.
+  - Added wishlist sale alerts covering every supported store, with a deals
+    list page and notifications that link through to a game's store page.
+  - All stores are enabled by default rather than Steam alone.
+  - Provider API keys may be supplied by the user, and the credentials
+    endpoint is self-hostable, removing the dependency on a single service.
+  - Added a unit and integration test suite, and corrected the licence
+    metadata in package.json, which declared BSD-3-Clause while the LICENSE
+    file has always been GPL-3.0.
+
+Third-party services used at runtime are documented in README.md.

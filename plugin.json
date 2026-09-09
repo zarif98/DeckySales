@@ -1,14 +1,15 @@
 {
-  "name": "Deckdeals",
-  "author": "Optideck",
+  "name": "DeckySales",
+  "author": "zarif98",
   "flags": [],
   "publish": {
     "tags": [
       "IsThereAnyDeal",
       "PriceHistory",
-      "Deals"
+      "Deals",
+      "Wishlist"
     ],
-    "description": "Price history and deal tracking directly on Steam Deck store pages.",
+    "description": "See the cheapest price available right now across ~30 stores on any Steam store page, and get notified when a wishlisted game goes on sale anywhere - not just on Steam. Forked from Deckdeals by ebdevag.",
     "resourceLink": "",
     "image": ""
   },

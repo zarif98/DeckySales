@@ -37,7 +37,7 @@ export const STORES: Store[] = [
 ].sort((a, b) => a.title.localeCompare(b.title));
 
 /**
- * Every store Deckdeals knows about. Used as the default selection so a fresh
+ * Every store DeckySales knows about. Used as the default selection so a fresh
  * install compares Steam against the whole market instead of Steam alone.
  */
 export const ALL_STORE_IDS: number[] = STORES.map(s => s.id);

@@ -171,7 +171,7 @@ class WishlistService {
 
             return parseWishlistAppIds(JSON.parse(body), this.MAX_WISHLIST_APPS);
         } catch (e) {
-            console.error("[Deckdeals] Wishlist fetch failed", e);
+            console.error("[DeckySales] Wishlist fetch failed", e);
             return { appIds: [], error: "exception" };
         }
     }
@@ -258,7 +258,7 @@ class WishlistService {
 
             return { found: announce.length, checked: gameIdByApp.size, seeded: isFirstRun };
         } catch (e) {
-            console.error("[Deckdeals] Wishlist check failed", e);
+            console.error("[DeckySales] Wishlist check failed", e);
             return { found: 0, checked: 0, error: "exception" };
         } finally {
             this.running = false;
@@ -272,7 +272,7 @@ class WishlistService {
     /**
      * Open a game's Steam store page in the Steam in-app browser.
      *
-     * That page is where StoreInjector renders the Deckdeals module, so a
+     * That page is where StoreInjector renders the DeckySales module, so a
      * tapped notification lands on the full cross-store comparison rather than
      * just telling the user a deal exists somewhere.
      */
@@ -281,7 +281,7 @@ class WishlistService {
             Navigation.CloseSideMenus();
             Navigation.NavigateToSteamWeb(url);
         } catch (e) {
-            console.error("[Deckdeals] Could not open page", e);
+            console.error("[DeckySales] Could not open page", e);
         }
     }
 
@@ -300,7 +300,7 @@ class WishlistService {
             Navigation.CloseSideMenus();
             Navigation.Navigate(DEALS_ROUTE);
         } catch (e) {
-            console.error("[Deckdeals] Could not open deals list", e);
+            console.error("[DeckySales] Could not open deals list", e);
         }
     }
 

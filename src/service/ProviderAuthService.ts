@@ -11,6 +11,11 @@ import { SETTINGS, Setting } from "../utils/Settings";
  *
  * See `server/README.md` for deploying your own.
  */
+// TODO(fork): replace with your own deployment - see server/README.md.
+// This is the last remaining dependency on the upstream project's
+// infrastructure. It is left pointing at the working upstream path so builds
+// are not dead in the meantime; users who set their own key in
+// Settings > API Access bypass it entirely.
 export const CREDENTIALS_ENDPOINT = "https://api.optideck.gg/deckdeals/auth";
 
 export interface Credentials {
@@ -133,7 +138,7 @@ class ProviderAuthService {
     private async fetchCredentials(): Promise<Credentials | null> {
         if (!this.serverApi) return null;
         if (!this.isValidEndpoint()) {
-            console.error("[Deckdeals] Invalid credentials endpoint configuration.");
+            console.error("[DeckySales] Invalid credentials endpoint configuration.");
             return this.credentials;
         }
 
@@ -143,23 +148,23 @@ class ProviderAuthService {
         }
 
         try {
-            console.log("[Deckdeals] Fetching remote credentials...");
+            console.log("[DeckySales] Fetching remote credentials...");
             const response = await this.serverApi.fetchNoCors(this.ENDPOINT, {
                 method: "GET",
                 headers: {
-                    "X-App-ID": "Deckdeals",
-                    "User-Agent": "Deckdeals-Plugin"
+                    "X-App-ID": "DeckySales",
+                    "User-Agent": "DeckySales-Plugin"
                 }
             });
 
             if (!response.success) {
-                console.error("[Deckdeals] Failed to fetch credentials.");
+                console.error("[DeckySales] Failed to fetch credentials.");
                 return this.credentials; // Return cached even if stale if fetch fails
             }
 
             const body = this.parseResponseBody(response.result);
             if (!body || body.length > this.MAX_RESPONSE_BYTES) {
-                console.error("[Deckdeals] Credentials payload missing or too large.");
+                console.error("[DeckySales] Credentials payload missing or too large.");
                 return this.credentials;
             }
 
@@ -167,7 +172,7 @@ class ProviderAuthService {
             const strictCredentials = this.parseStrictCredentials(parsed);
 
             if (!strictCredentials) {
-                console.error("[Deckdeals] Credentials payload failed strict validation.");
+                console.error("[DeckySales] Credentials payload failed strict validation.");
                 return this.credentials;
             }
 
@@ -175,7 +180,7 @@ class ProviderAuthService {
             this.lastFetchTime = now;
             return this.credentials;
         } catch {
-            console.error("[Deckdeals] Error fetching credentials.");
+            console.error("[DeckySales] Error fetching credentials.");
         }
 
         return this.credentials;

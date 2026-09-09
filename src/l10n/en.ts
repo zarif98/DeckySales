@@ -1,5 +1,5 @@
 export const en: Record<string, string> = {
-    "plugin.title": "Deckdeals",
+    "plugin.title": "DeckySales",
     // Settings UI
     "language.name": "English",
     "settings.general.title": "General",
@@ -8,7 +8,7 @@ export const en: Record<string, string> = {
     "settings.about.title": "About",
     "settings.language.title": "Language",
     "settings.common.selectedPrefix": "Selected:",
-    "settings.enable.label": "Enable Deckdeals",
+    "settings.enable.label": "Enable DeckySales",
     "settings.enable.description": "Show price information on store pages",
     "settings.dateFormat.label": "Date Format",
     "settings.dateFormat.description": "Select preferred date format",
@@ -72,7 +72,7 @@ export const en: Record<string, string> = {
     "settings.wishlist.status.noPrices": "Could not reach the price service. Your alerts are unchanged; it will retry.",
     "settings.wishlist.reset.label": "Reset Alert History",
     "deals.title": "Wishlist Deals",
-    "deals.empty": "No deals found yet. Open Deckdeals settings and run a check, or wait for the next automatic one.",
+    "deals.empty": "No deals found yet. Open DeckySales settings and run a check, or wait for the next automatic one.",
     "deals.footerHint": "Select a game to open its Steam store page.",
     "deals.priceLine": "{price} (-{cut}%) at {store}",
     "settings.wishlist.viewDeals.label": "View Deals List",
@@ -86,10 +86,10 @@ export const en: Record<string, string> = {
     "attribution.line1": "Source: IsThereAnyDeal (ITAD) API",
     "attribution.line2": "Source: exchangerate-api.com",
     "attribution.line3": "Inspiration: IsThereAnyDeal Decky Plugin by JtdeGraaf",
-    "attribution.line4": "Deckdeals by Optideck • github.com/draftdev-sd/optideck-deckdeals",
+    "attribution.line4": "DeckySales by Optideck • github.com/draftdev-sd/deckysales",
 
     // Store page (injected into Steam browser)
-    "store.title": "Deckdeals",
+    "store.title": "DeckySales",
     "store.currentPrice": "Current",
     "store.bestNow": "Best now",
     "store.noLiveDeals": "No live offers",

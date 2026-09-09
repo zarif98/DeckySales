@@ -15,8 +15,8 @@ This guide explains how to fork this repo and generate an installable Decky ZIP 
 2. Clone your fork locally:
 
 ```bash
-git clone https://github.com/draftdev-sd/optideck-deckdeals.git
-cd optideck-deckdeals
+git clone https://github.com/draftdev-sd/deckysales.git
+cd deckysales
 ```
 
 ## 2. Install dependencies
@@ -36,7 +36,7 @@ pnpm run archive
 This command will:
 
 1. Build the frontend bundle (`dist/index.js`).
-2. Create a temporary `Deckdeals/` folder.
+2. Create a temporary `DeckySales/` folder.
 3. Copy required plugin files into that folder:
    - `dist/index.js`
    - `main.py`
@@ -46,9 +46,9 @@ This command will:
    - `README.md`
    - `LICENSE`
 4. Create a ZIP named:
-   - `optideck-deckdeals-v<version>-beta.zip`
+   - `deckysales-v<version>-beta.zip`
 5. Exclude common macOS metadata (`.DS_Store`, `__MACOSX/*`).
-6. Remove the temporary `Deckdeals/` folder after packaging.
+6. Remove the temporary `DeckySales/` folder after packaging.
 
 ## 4. Install on Steam Deck
 

@@ -225,7 +225,7 @@ class PriceService {
                     out.set(id, normalizeDeals((item as any)?.deals));
                 }
             } catch (e) {
-                console.error("[Deckdeals] Live deal fetch failed", e);
+                console.error("[DeckySales] Live deal fetch failed", e);
             }
         }
 
@@ -264,7 +264,7 @@ class PriceService {
                     out.set(appId, gameId);
                 }
             } catch (e) {
-                console.error("[Deckdeals] Bulk id lookup failed", e);
+                console.error("[DeckySales] Bulk id lookup failed", e);
             }
         }
 

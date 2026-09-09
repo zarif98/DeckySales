@@ -176,7 +176,7 @@ export function formatRowPrice(deal: RowDeal, template: string): string {
 }
 
 /** Route the deals list is registered at, and where notifications point. */
-export const DEALS_ROUTE = "/deckdeals/deals";
+export const DEALS_ROUTE = "/deckysales/deals";
 
 /** The Steam store page a deals-list row links to. */
 export function storePageUrlFor(appId: string): string {

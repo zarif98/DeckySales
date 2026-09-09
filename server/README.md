@@ -29,15 +29,15 @@ npm install -g wrangler
 wrangler login
 
 cd server
-wrangler deploy credentials-worker.js --name deckdeals-credentials --compatibility-date 2026-01-01
+wrangler deploy credentials-worker.js --name deckysales-credentials --compatibility-date 2026-01-01
 
 # Store the keys as secrets, not in the source
-wrangler secret put ITAD_API_KEY --name deckdeals-credentials
-wrangler secret put EXCHANGE_RATE_API_KEY --name deckdeals-credentials
+wrangler secret put ITAD_API_KEY --name deckysales-credentials
+wrangler secret put EXCHANGE_RATE_API_KEY --name deckysales-credentials
 ```
 
 Wrangler prints the deployed URL, e.g.
-`https://deckdeals-credentials.<your-subdomain>.workers.dev`.
+`https://deckysales-credentials.<your-subdomain>.workers.dev`.
 
 Any host works — a Vercel or Netlify function, or your own server. The plugin
 only requires HTTPS and this exact JSON shape:
@@ -54,7 +54,7 @@ not add a status or version field.
 One line, in [`src/service/ProviderAuthService.ts`](../src/service/ProviderAuthService.ts):
 
 ```ts
-export const CREDENTIALS_ENDPOINT = "https://deckdeals-credentials.<you>.workers.dev";
+export const CREDENTIALS_ENDPOINT = "https://deckysales-credentials.<you>.workers.dev";
 ```
 
 The endpoint's security check derives from that same constant, so there is
@@ -63,7 +63,7 @@ nothing else to keep in sync.
 ## 4. Verify
 
 ```bash
-curl -s https://deckdeals-credentials.<you>.workers.dev | jq
+curl -s https://deckysales-credentials.<you>.workers.dev | jq
 ```
 
 You should get exactly the two keys. A `server_misconfigured` error means a

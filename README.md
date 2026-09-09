@@ -1,13 +1,13 @@
 <div align="center">
 
-# Deckdeals
+# DeckySales
 ### Price History & Deals (BETA)
 
-![Deckdeals Screenshot](./gh-image.jpeg)
+![DeckySales Screenshot](./gh-image.jpeg)
 
 **Track prices, spot deals, and save money directly from the Steam Store.**
 
-  <a href="https://github.com/ebdevag/optideck-deckdeals/releases/download/v1.1.1-beta/optideck-deckdeals-v1.1.1-beta.zip">
+  <a href="https://github.com/ebdevag/deckysales/releases/download/v1.1.1-beta/deckysales-v1.1.1-beta.zip">
     <img src="https://img.shields.io/badge/Download-.zip_(BETA)-blue?style=for-the-badge&logo=github&logoColor=white" alt="Download .zip" />
   </a>
 </p>
@@ -19,11 +19,21 @@
 > [!NOTE]
 > This is a **BETA** build. Features and UI are subject to change. I'm hoping to submit this to Decky shortly after I've had time to polish it to the fullest.
 
+## Credits
+
+**DeckySales is a fork of [Deckdeals](https://github.com/ebdevag/optideck-deckdeals) by [ebdevag](https://github.com/ebdevag).**
+
+Nearly all of this plugin is his work — the Steam store page integration, the price history graph, the next-sale prediction, the currency normalisation tables, the settings interface, and the IsThereAnyDeal integration underneath it all. This fork continues it with his knowledge, adding cross-store "best price now", wishlist sale alerts, and a self-hostable credentials endpoint.
+
+Russian and Ukrainian translations by [Eugene Chefranov](https://github.com/chefranov). Original inspiration: [IsThereAnyDeal Decky Plugin](https://github.com/JtdeGraaf/IsThereAnyDeal-Decky-Plugin) by JtdeGraaf.
+
+Licensed under **GPL-3.0-or-later**, as the upstream project always was. See [`NOTICE`](./NOTICE) for the full attribution and the list of changes.
+
 ## Installation
 
 You can install the plugin manually via the ZIP file:
 
-1. Download the [optideck-deckdeals-v1.1.1-beta.zip](https://github.com/ebdevag/optideck-deckdeals/releases/download/v1.1.1-beta/optideck-deckdeals-v1.1.1-beta.zip) (or fork the repo and zip it yourself).
+1. Download the latest `deckysales-v*.zip` from the [Releases page](https://github.com/zarif98/deckysales/releases).
    - Fork/build guide: [`.github/DOCUMENTATION/FORK_AND_BUILD_ZIP.md`](.github/DOCUMENTATION/FORK_AND_BUILD_ZIP.md)
 2. On your Steam Deck, go to **Decky Options**.
 3. Enable **Developer Mode** (via the General tab).
@@ -54,7 +64,7 @@ You can install the plugin manually via the ZIP file:
 
 ## How it Works & API Usage
 
-To provide accurate and up-to-date information, Deckdeals interacts with the following services:
+To provide accurate and up-to-date information, DeckySales interacts with the following services:
 
 | Service | Purpose | Data Sent |
 | :--- | :--- | :--- |
@@ -79,7 +89,7 @@ Wishlist Alerts reads your wishlist from Steam's public wishlist API using the S
 
 **Where a notification takes you**
 
-- A single-game notification opens that game's Steam store page, where the Deckdeals module shows the full cross-store comparison.
+- A single-game notification opens that game's Steam store page, where the DeckySales module shows the full cross-store comparison.
 - A summary notification opens the **Wishlist Deals** list: every game found on sale with its best price, discount and store. Selecting one opens its Steam store page.
 - The list is available any time from **View Deals List** in the plugin settings.
 

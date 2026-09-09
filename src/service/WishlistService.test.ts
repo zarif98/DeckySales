@@ -421,7 +421,7 @@ describe("notification click-through", () => {
 
         toasts[0].onClick!();
 
-        expect(navCalls).toContainEqual({ method: "Navigate", arg: "/deckdeals/deals" });
+        expect(navCalls).toContainEqual({ method: "Navigate", arg: "/deckysales/deals" });
     });
 
     it("keeps deals in the list on later checks, after they stop being announced", async () => {

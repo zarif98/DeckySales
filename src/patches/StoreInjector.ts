@@ -12,7 +12,7 @@ import { t } from "../l10n"
  * 1) Watch Steam Deck route changes to detect entry/exit of /steamweb.
  * 2) Connect to the local Chromium DevTools endpoint for the store tab.
  * 3) Track page navigations to keep the current appId in sync.
- * 4) Inject the Deckdeals UI block into store pages.
+ * 4) Inject the DeckySales UI block into store pages.
  * 5) Fetch deal data and update the injected UI via Runtime.evaluate calls.
  * 6) Tear everything down cleanly when leaving the store.
  *
@@ -71,13 +71,13 @@ export const injectStore = (serverApi: ServerAPI) => {
     let wsMessageId = 10; // Counter for WebSocket command IDs
 
     // =========================================================================
-    // PART 2: `injectDeckDealsBox(appId)`
-    // Purpose: Insert/replace the Deckdeals UI shell in the current Steam Store DOM.
+    // PART 2: `injectDeckySalesBox(appId)`
+    // Purpose: Insert/replace the DeckySales UI shell in the current Steam Store DOM.
     // Security: Requires an OPEN websocket and writes only within store page context.
     // =========================================================================
     // Section: UI injection.
-    // Creates or replaces the Deckdeals module container in the store DOM.
-    const injectDeckDealsBox = async (appId: string) => {
+    // Creates or replaces the DeckySales module container in the store DOM.
+    const injectDeckySalesBox = async (appId: string) => {
         if (!storeWebSocket || storeWebSocket.readyState !== WebSocket.OPEN) return;
 
         const historyRange = await SETTINGS.load(Setting.HISTORY_RANGE) || "1y";
@@ -95,21 +95,27 @@ export const injectStore = (serverApi: ServerAPI) => {
         const js = `
             (function() {
                 var appId = "${appId}";
-                var boxId = 'dbpc-deckdeals-box-' + appId;
+                var boxId = 'dbpc-deckysales-box-' + appId;
                 
                 // PART 2A (browser context): remove previous injected modules before re-insert.
                 var existing = document.getElementById(boxId);
                 if (existing) existing.remove();
                 
-                // PART 2B (browser context): clean up legacy id from older plugin versions.
+                // PART 2B (browser context): clean up legacy ids from older plugin versions.
                 var oldLegacy = document.getElementById('dbpc-steamdb-box');
                 if (oldLegacy) oldLegacy.remove();
+
+                // Deckdeals, which this is forked from, injects under its own id.
+                // Remove it so anyone running both does not get two identical
+                // price boxes stacked on the page.
+                var upstreamBox = document.getElementById('dbpc-deckdeals-box-' + appId);
+                if (upstreamBox) upstreamBox.remove();
 
                 var wrapperDiv = document.createElement('div');
                 wrapperDiv.id = boxId;
                 wrapperDiv.className = 'game_area_purchase_game_wrapper';
                 // Scoped class for easier cleanup if needed
-                wrapperDiv.classList.add('deckdeals-injected-module'); 
+                wrapperDiv.classList.add('deckysales-injected-module'); 
 
                 wrapperDiv.style.marginTop = '20px';
                 wrapperDiv.style.marginBottom = '${settingsPadding}px'; 
@@ -125,7 +131,7 @@ export const injectStore = (serverApi: ServerAPI) => {
 
                         </div>
                         
-                        <div class="Deckdeals-info" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <div class="DeckySales-info" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                             <!-- Row 1, Col 1: Current Price -->
                             <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
                                 <div style="font-size: 10px; color: #8f98a0; margin-bottom: 2px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">${t("store.currentPrice")}</div>
@@ -158,8 +164,8 @@ export const injectStore = (serverApi: ServerAPI) => {
                         </div>
 
                         <!-- Graph Container -->
-                        <div id="Deckdeals-content-${appId}" style="background: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 2px; margin-bottom: 10px;">
-                            <div class="Deckdeals-graph-container" style="position: relative; height: 60px; width: 100%; margin: 0 0 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <div id="DeckySales-content-${appId}" style="background: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 2px; margin-bottom: 10px;">
+                            <div class="DeckySales-graph-container" style="position: relative; height: 60px; width: 100%; margin: 0 0 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
                                 <div id="dd-graph-${appId}" style="width: 100%; height: 100%; display: flex; align-items: flex-end;">
                                     <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #666; font-size: 12px;">${t("store.loadingGraph")}</div>
                                 </div>
@@ -178,7 +184,7 @@ export const injectStore = (serverApi: ServerAPI) => {
                             </div>
                         </div>
                         
-                        <div class="Deckdeals-actions" id="dd-actions-${appId}" style="display: ${displayStyle}; gap: 10px;">
+                        <div class="DeckySales-actions" id="dd-actions-${appId}" style="display: ${displayStyle}; gap: 10px;">
                             <a class="btn_blue_steamui btn_medium" href="${steamDBUrl}" target="_blank" style="padding: 6px 12px; font-size: 13px; flex: 1; text-align: center; text-decoration: none; color: white; border-radius: 2px;">
                                 <span>${t("store.quickLinkSteamDb")}</span>
                             </a>
@@ -210,12 +216,12 @@ export const injectStore = (serverApi: ServerAPI) => {
     };
 
     // =========================================================================
-    // PART 3: `updateDeckDealsBox(result, appId)`
+    // PART 3: `updateDeckySalesBox(result, appId)`
     // Purpose: Render data into the injected UI and build graph/prediction visuals.
     // Security: Abort unless websocket is OPEN; settings/data are serialized once
     // before being evaluated in browser context.
     // =========================================================================
-    const updateDeckDealsBox = async (result: { data: any, error?: string, debug?: any } | null, appId: string) => {
+    const updateDeckySalesBox = async (result: { data: any, error?: string, debug?: any } | null, appId: string) => {
         if (!storeWebSocket || storeWebSocket.readyState !== WebSocket.OPEN) {
             return;
         }
@@ -325,8 +331,8 @@ export const injectStore = (serverApi: ServerAPI) => {
                 var itadLink = document.getElementById('dd-itad-link-' + appId);
                 
                 // Force Update Styles (Fix for stale DOM)
-                var infoBox1 = document.querySelector('#dbpc-deckdeals-box-' + appId + ' .Deckdeals-info > div:nth-child(1)');
-                var infoBox2 = document.querySelector('#dbpc-deckdeals-box-' + appId + ' .Deckdeals-info > div:nth-child(2)');
+                var infoBox1 = document.querySelector('#dbpc-deckysales-box-' + appId + ' .DeckySales-info > div:nth-child(1)');
+                var infoBox2 = document.querySelector('#dbpc-deckysales-box-' + appId + ' .DeckySales-info > div:nth-child(2)');
                 
                 var applyBadgeStyle = function(el) {
                     if (!el) return;
@@ -726,8 +732,8 @@ export const injectStore = (serverApi: ServerAPI) => {
                 // PART 3F: Dedicated free-game rendering mode.
                 if (currentEntry && currentAmount === 0 && convertedHistory.length > 0) {
                     // Mute normal elements
-                    var contentDiv = document.getElementById('Deckdeals-content-' + appId);
-                    var infoDiv = document.querySelector('#dbpc-deckdeals-box-' + appId + ' .Deckdeals-info');
+                    var contentDiv = document.getElementById('DeckySales-content-' + appId);
+                    var infoDiv = document.querySelector('#dbpc-deckysales-box-' + appId + ' .DeckySales-info');
                     
                     if (contentDiv) contentDiv.style.display = 'none';
                     if (infoDiv) {
@@ -759,7 +765,7 @@ export const injectStore = (serverApi: ServerAPI) => {
                     }
 
                     // Update Best Now Label (Line 0: Label + Discount)
-                    var lowestLabelEl = document.querySelector('#dbpc-deckdeals-box-' + appId + ' .Deckdeals-info > div:nth-child(2) > div:first-child');
+                    var lowestLabelEl = document.querySelector('#dbpc-deckysales-box-' + appId + ' .DeckySales-info > div:nth-child(2) > div:first-child');
                     if (lowestLabelEl) {
                          var labelHtml = '${t("store.bestNow")}';
                          if (diffText) {
@@ -1050,9 +1056,9 @@ export const injectStore = (serverApi: ServerAPI) => {
             // Small delay to let the store page finish rendering
             setTimeout(async () => {
                 try {
-                    injectDeckDealsBox(appId);
+                    injectDeckySalesBox(appId);
                     const data = await priceService.getLowestPrice(appId);
-                    await updateDeckDealsBox(data ?? null, appId);
+                    await updateDeckySalesBox(data ?? null, appId);
                 } catch {
                 }
             }, 1500);

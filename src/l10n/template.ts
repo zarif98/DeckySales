@@ -1,5 +1,5 @@
 // =============================================================================
-// Deckdeals Translation Template
+// DeckySales Translation Template
 // =============================================================================
 //
 // How to contribute a translation:
