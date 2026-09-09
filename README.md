@@ -1,182 +1,163 @@
 <div align="center">
 
 # DeckySales
-### Price History & Deals (BETA)
 
-![DeckySales Screenshot](./gh-image.jpeg)
+### Find the cheapest price, on any store, without leaving your Deck
 
-**Track prices, spot deals, and save money directly from the Steam Store.**
+![DeckySales on a Steam store page](./.github/DOCUMENTATION/images/best-price-now.jpeg)
 
-  <a href="https://github.com/ebdevag/deckysales/releases/download/v1.1.1-beta/deckysales-v1.1.1-beta.zip">
-    <img src="https://img.shields.io/badge/Download-.zip_(BETA)-blue?style=for-the-badge&logo=github&logoColor=white" alt="Download .zip" />
-  </a>
-</p>
+**Steam wants 49.99. The Microsoft Store has it for 24.99. DeckySales tells you before you buy.**
+
+[![CI](https://github.com/zarif98/DeckySales/actions/workflows/ci.yml/badge.svg)](https://github.com/zarif98/DeckySales/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/zarif98/DeckySales?label=download&style=flat)](https://github.com/zarif98/DeckySales/releases/latest)
+[![License](https://img.shields.io/badge/license-GPL--3.0-blue)](./LICENSE)
 
 </div>
 
-[![CI](https://github.com/zarif98/deckysales/actions/workflows/ci.yml/badge.svg)](https://github.com/zarif98/deckysales/actions/workflows/ci.yml)
-
 ---
 
+## What it does
+
+DeckySales adds a price panel to every Steam store page on your Deck, and watches your wishlist for sales anywhere — not just on Steam.
+
+- **The best price available right now**, across ~30 stores. Not an all-time low you can no longer pay — the price you would actually pay today, with the historic low kept underneath as context.
+- **Wishlist alerts across every store.** Steam only tells you when *Steam* discounts a wishlisted game. This tells you when GOG, Fanatical, GreenManGaming or anyone else does.
+- **Price history and next-sale prediction**, from five years of data.
+- **Currency-aware comparison** — daily exchange rates are used behind the scenes so "cheaper" means cheaper, even across stores pricing in different currencies.
+- **All stores enabled by default**, so the comparison works out of the box.
+
 > [!NOTE]
-> This is a **BETA** build. Features and UI are subject to change. I'm hoping to submit this to Decky shortly after I've had time to polish it to the fullest.
-
-## Credits
-
-**DeckySales is a fork of [Deckdeals](https://github.com/ebdevag/optideck-deckdeals) by [ebdevag](https://github.com/ebdevag).**
-
-Nearly all of this plugin is his work — the Steam store page integration, the price history graph, the next-sale prediction, the currency normalisation tables, the settings interface, and the IsThereAnyDeal integration underneath it all. This fork continues it with his knowledge, adding cross-store "best price now", wishlist sale alerts, and a self-hostable credentials endpoint.
-
-Russian and Ukrainian translations by [Eugene Chefranov](https://github.com/chefranov). Original inspiration: [IsThereAnyDeal Decky Plugin](https://github.com/JtdeGraaf/IsThereAnyDeal-Decky-Plugin) by JtdeGraaf.
-
-Licensed under **GPL-3.0-or-later**, as the upstream project always was. See [`NOTICE`](./NOTICE) for the full attribution and the list of changes.
+> DeckySales is not on the Decky plugin store yet, so installation is manual — see below. It is a working, tested plugin, not a preview.
 
 ## Installation
 
-You can install the plugin manually via the ZIP file:
+1. Download the latest `deckysales-v*.zip` from the [**Releases page**](https://github.com/zarif98/DeckySales/releases/latest).
+2. On your Steam Deck, open **Decky** → **Settings**.
+3. Enable **Developer Mode** under the General tab.
+4. Go to the **Developer** tab.
+5. Choose **Install Plugin from ZIP File** and select the downloaded file.
 
-1. Download the latest `deckysales-v*.zip` from the [Releases page](https://github.com/zarif98/deckysales/releases).
-   - Fork/build guide: [`.github/DOCUMENTATION/FORK_AND_BUILD_ZIP.md`](.github/DOCUMENTATION/FORK_AND_BUILD_ZIP.md)
-2. On your Steam Deck, go to **Decky Options**.
-3. Enable **Developer Mode** (via the General tab).
-4. Go to the **Developer Tab**.
-5. Select **Install Plugin from ZIP File** and choose the downloaded file.
-
-## Features
-
-- **Store Page Integration**: Price information is injected directly into the Steam store page.
-- **Best Price Right Now**: The headline figure is the cheapest price you can actually pay today across every selected store - not an all-time low you can no longer buy at. The historic low is kept underneath as context.
-- **Price Comparison**: Displays current prices from Steam and ~30 supported alternative providers, all enabled by default for new installs. An existing store selection is never changed.
-- **Wishlist Alerts**: Notifies you when a game on your Steam wishlist goes on sale at *any* supported store, not just on Steam.
-- **Price History**: Tracks historical lows and includes price trend graphs.
-- **Next Sale Prediction**: Estimates upcoming sales using 5 years of historical price data (regardless of the displayed period).
-- **Currency Normalization**: Uses daily exchange rates for price comparison across different store currencies.
-- **Regional Support**: Compatible with all major Steam regions and localized currencies.
-- **Quick Links**: Buttons for SteamDB and IsThereAnyDeal pages.
+Prefer to build it yourself? See [`FORK_AND_BUILD_ZIP.md`](./.github/DOCUMENTATION/FORK_AND_BUILD_ZIP.md).
 
 ## Screenshots
 
-**Best price right now**, on the store page - Steam wants 49.99, the Microsoft Store has it for 24.99. The all-time low sits underneath as context.
+**On the store page.** The right-hand tile is the cheapest price live across your selected stores, with the discount, the store, and what it saves against Steam. The all-time low sits below it as context, not as the headline.
 
 ![Best price now](./.github/DOCUMENTATION/images/best-price-now.jpeg)
 
-**Wishlist Deals** - every wishlisted game found on sale at any store, with the notification that opened the list.
+**Wishlist Deals.** Every wishlisted game currently on sale anywhere, deepest discount first. Selecting one opens its Steam store page. The notification that opens this list is visible bottom-right.
 
 ![Wishlist deals](./.github/DOCUMENTATION/images/wishlist-deals.jpeg)
 
-## How it Works & API Usage
+## Wishlist alerts
 
-To provide accurate and up-to-date information, DeckySales interacts with the following services:
+Your wishlist is read from Steam's public wishlist API using the SteamID of the signed-in account, so your **Steam wishlist must be public** — Steam Profile → Privacy Settings → *Game details*. The plugin says so explicitly if it isn't.
 
-| Service | Purpose | Data Sent |
-| :--- | :--- | :--- |
-| **Credentials endpoint** | Fetches the managed API keys for the price and currency services. Self-hostable - see [`server/`](./server/README.md). Skipped entirely if you supply your own key. | Custom `X-App-ID` header for authentication |
-| **IsThereAnyDeal** (`isthereanydeal.com`) | Retrieves current prices, historic lows, and graph data. | AppID, Country Code, Store IDs |
-| **ExchangeRate-API** (`exchangerate-api.com`) | Fetches daily exchange rates for accurate price normalization. | Target Currency |
-| **Steam Web API** (`api.steampowered.com`) | Reads your public wishlist for deal alerts (only when Wishlist Alerts is enabled). | Your SteamID64 |
-
-All requests are made locally from your Steam Deck using Decky's secure network layer. Your Steam account data, inventory, and personal information are **never** accessed or shared.
-
-### Wishlist Alerts
-
-Wishlist Alerts reads your wishlist from Steam's public wishlist API using the SteamID of the signed-in account. This requires your Steam wishlist to be **public** (Steam Profile → Privacy Settings → *Game details*). Your SteamID is sent only to Steam's own API. To price your wishlist, the Steam app IDs of the games on it are sent to IsThereAnyDeal - that is the only wishlist-derived data that leaves the device, and nothing is sent to Optideck.
-
-**When you are notified**
+**When you get told**
 
 - Checks run on a configurable interval (default: every 6 hours), and on demand via **Check Now**.
-- The **first** check records what is already on sale *without* notifying you. Across ~30 stores something is always discounted, so announcing that backlog would present weeks-old deals as news. From then on, an alert means a sale genuinely started.
-- Games added to your wishlist later while already on sale, and discounts that deepen, still alert normally.
+- The **first** check records what is already on sale *without* notifying you. Across ~30 stores something is always discounted, so announcing that backlog would present weeks-old deals as news. After that, an alert means a sale genuinely started.
+- Games you wishlist later while already on sale, and discounts that deepen, still alert normally.
 - Each deal is announced once per price. A sale that ends and later returns is announced again.
-- Up to three games are announced individually; beyond that you get a single summary.
+- Up to three games are announced individually; beyond that you get one summary.
 
-**Where a notification takes you**
+**Where the notification takes you**
 
-- A single-game notification opens that game's Steam store page, where the DeckySales module shows the full cross-store comparison.
-- A summary notification opens the **Wishlist Deals** list: every game found on sale with its best price, discount and store. Selecting one opens its Steam store page.
-- The list is available any time from **View Deals List** in the plugin settings.
+- A single-game alert opens that game's Steam store page, where the DeckySales panel shows the full cross-store comparison.
+- A summary alert opens the **Wishlist Deals** list. Selecting a game opens its store page.
+- That list is available any time from **View Deals List** in settings.
 
 **Controls**
 
-- **Minimum Discount** - ignore anything shallower.
-- **Check Frequency** - how often the background check runs.
-- **Reset Alert History** - forget what you have been told, so the next check reports every current sale again.
+| Setting | What it does |
+| :-- | :-- |
+| **Minimum Discount** | Ignore anything shallower than this. |
+| **Check Frequency** | How often the background check runs. |
+| **Reset Alert History** | Forget what you have been told, so the next check reports every current sale again. |
+
+## Privacy and API usage
+
+| Service | Purpose | What is sent |
+| :--- | :--- | :--- |
+| **Credentials endpoint** | Supplies the managed API keys. Self-hostable — see [`server/`](./server/README.md). Never contacted if you supply your own key. | An `X-App-ID` header |
+| **IsThereAnyDeal** | Current prices, historic lows, graph data | App ID, country code, store IDs |
+| **ExchangeRate-API** | Daily rates for cross-currency comparison | Target currency |
+| **Steam Web API** | Reads your public wishlist, only when alerts are enabled | Your SteamID64 |
+
+All requests are made from your Deck through Decky's network layer. Your Steam account, library and inventory are never accessed.
+
+**On wishlist data specifically:** your SteamID goes only to Steam's own API. To price your wishlist, the Steam app IDs of the games on it are sent to IsThereAnyDeal — that is the only wishlist-derived data that leaves your device, and nothing about your wishlist is sent anywhere else.
 
 ### Bring your own API key
 
-The plugin uses a shared IsThereAnyDeal key by default. You can paste your own under **Settings → API Access** to use your own quota, or if the shared key is ever unavailable - it takes precedence over the hosted endpoint, and no request is made to that endpoint at all while it is set.
+DeckySales uses a shared IsThereAnyDeal key by default. Paste your own under **Settings → API Access** to use your own quota, or if the shared key is ever unavailable. It takes precedence, and while it is set the credentials endpoint is not contacted at all.
 
-Maintainers running a fork should deploy their own credentials endpoint rather than relying on someone else's: see [`server/README.md`](./server/README.md).
+Running your own fork? Deploy your own endpoint rather than depending on someone else's: [`server/README.md`](./server/README.md).
 
 ## Development
 
-Build the frontend bundle:
-
 ```bash
 pnpm install
-pnpm build
-```
-
-Run the tests and type checker:
-
-```bash
-pnpm test        # unit + end-to-end service tests
-pnpm typecheck   # tsc --noEmit
+pnpm build        # bundle to dist/index.js
+pnpm test         # unit + end-to-end service tests
+pnpm typecheck    # tsc --noEmit
+pnpm run archive  # build an installable zip
 ```
 
 Tests cover two layers:
 
-- **Pure logic** (`src/utils`) - deal normalization, which offer triggers a wishlist alert, notification de-duplication and first-run seeding, deals-list ordering, and validation of everything arriving from an external API.
-- **The wishlist flow end to end** (`src/service/WishlistService.test.ts`) - driven through a fake `ServerAPI`, so a sale can be made to start, deepen, lapse and return, and the resulting notification asserted, without waiting on a real sale.
+- **Pure logic** (`src/utils`) — deal normalization, which offer triggers an alert, notification de-duplication and first-run seeding, deals-list ordering, and validation of everything arriving from an external API.
+- **The wishlist flow end to end** (`src/service/WishlistService.test.ts`) — driven through a fake `ServerAPI`, so a sale can be made to start, deepen, lapse and return and the resulting notification asserted, without waiting for a real sale.
 
-`decky-frontend-lib` cannot load outside the Steam client, so vitest aliases it to a stub (`src/test/`) that records navigation calls. Only the Steam Store DOM injection and on-screen rendering need a real device.
+`decky-frontend-lib` cannot load outside the Steam client, so vitest aliases it to a stub in `src/test/` that records navigation calls. Only the Steam store DOM injection and on-screen rendering need real hardware.
 
-> **Note:** `@types/node` is pinned to v18 because TypeScript 4.7 cannot parse newer versions - it fails with syntax errors in the `.d.ts` and aborts before reaching `src/`, silently disabling type checking for the whole project. Run `pnpm typecheck` and confirm it reports errors in `src/` paths, not in `node_modules`.
+> [!IMPORTANT]
+> `@types/node` is pinned to v18 deliberately. TypeScript 4.7 cannot parse newer versions — it fails with syntax errors inside the `.d.ts` and aborts *before reaching `src/`*, silently type-checking nothing. If you bump it, confirm `pnpm typecheck` still reports errors in `src/` paths rather than in `node_modules`.
 
 ## Releases
 
-Every push runs [CI](.github/workflows/ci.yml): type check, tests, build, and a packaging check that the zip contains what it should and that no test code leaked into the bundle. The installable zip is attached to each run as an artifact, so the latest build is always one download away without cutting a release.
+Every push runs [CI](.github/workflows/ci.yml): type check, tests, build, and a packaging check that the zip contains what it should and that no test code leaked into the bundle. Each run attaches the installable zip as an artifact, so the latest build is always one download away.
 
-To publish a release, bump the version in **both** `package.json` and `plugin.json`, then tag it:
+To publish, bump the version in **both** `package.json` and `plugin.json`, then tag:
 
 ```bash
-git tag v1.2.0 && git push origin v1.2.0
+git tag v1.3.0 && git push origin v1.3.0
 ```
 
-[`release.yml`](.github/workflows/release.yml) verifies the tag matches both manifests, re-runs the type check and tests, and publishes a GitHub Release with the zip attached and generated notes. CI fails the build if the two version fields ever disagree, since the Decky store reads `plugin.json` while the zip is named from `package.json`.
+[`release.yml`](.github/workflows/release.yml) checks the tag matches both manifests, re-runs the type check and tests, then publishes a GitHub Release with the zip attached. CI fails if the two version fields ever disagree — the Decky store reads `plugin.json`, while the zip is named from `package.json`.
 
-## Security Review
+## Security
 
-For security reviewers and advanced users, start with:
+Reviewers should start with the [Security Review Notes](./.github/DOCUMENTATION/SECURITY_REVIEW.md), covering file-by-file responsibilities, settings persistence and privacy scope, logging policy, and the fail-closed handling of external API responses.
 
-- [Security Review Notes](./.github/DOCUMENTATION/SECURITY_REVIEW.md)
+## Roadmap
 
-This document includes:
-- File-by-file responsibilities.
-- Settings persistence and privacy scope.
-- Operational logging policy.
-- External API response hardening and fail-closed behavior.
-
-## Roadmap & Planned Features
-
-- [ ] Support for more store data providers.
-- [ ] Additional languages and localizations.
-- [ ] Wishlist page compatibility.
-- [ ] Ability to customize and move the info box to different locations on the store page.
+- [ ] Submit to the Decky plugin store
+- [ ] Link deals through to the store offering them, not only to Steam
+- [ ] More price providers
+- [ ] More translations
+- [ ] Wishlist page integration
+- [ ] Configurable placement of the store-page panel
 
 ## Contributing
 
-Contributions of translations and new additions are very welcome!
+Translations especially welcome:
 
 1. Copy `src/l10n/template.ts` → `src/l10n/<lang>.ts` (e.g. `de.ts`).
-2. Fill in all translated strings in the template.
-3. Import your file in `src/l10n/index.ts` and add it to the `locales` map.
-4. Submit a pull request.
+2. Fill in the strings.
+3. Import it in `src/l10n/index.ts` and add it to the `locales` map.
+4. Open a pull request.
 
----
+## Credits
 
-<div align="center">
+**DeckySales is a fork of [Deckdeals](https://github.com/ebdevag/optideck-deckdeals) by [ebdevag](https://github.com/ebdevag), and the great majority of it is his work** — the Steam store page integration, the price history graph, the next-sale prediction, the currency normalisation tables, the settings interface, and the IsThereAnyDeal integration the whole thing is built on. This fork continues the project with his knowledge, adding cross-store best-price-now, wishlist sale alerts, a self-hostable credentials endpoint, and a test suite.
 
-<sub>Managed by **Optideck & Draftdev (Author)**</sub><br>
-<sub>Special thanks to the <a href="https://github.com/IsThereAnyDeal/AugmentedSteam/wiki/ITAD-API">ITAD API</a>, <a href="https://www.exchangerate-api.com/">ExchangeRate-API</a>, and the original <a href="https://github.com/JtdeGraaf/IsThereAnyDeal-DeckyPlugin">IsThereAnyDeal Decky Plugin</a> by JtdeGraaf</sub>
+Russian and Ukrainian translations by [Eugene Chefranov](https://github.com/chefranov).
 
-</div>
+Original inspiration: the [IsThereAnyDeal Decky Plugin](https://github.com/JtdeGraaf/IsThereAnyDeal-DeckyPlugin) by JtdeGraaf.
+
+Price data from the [IsThereAnyDeal API](https://isthereanydeal.com/), exchange rates from [ExchangeRate-API](https://www.exchangerate-api.com/).
+
+## License
+
+[GPL-3.0-or-later](./LICENSE), as the upstream project has always been. See [`NOTICE`](./NOTICE) for full attribution and the list of changes made in this fork.

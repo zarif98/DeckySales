@@ -15,7 +15,7 @@ This guide explains how to fork this repo and generate an installable Decky ZIP 
 2. Clone your fork locally:
 
 ```bash
-git clone https://github.com/draftdev-sd/deckysales.git
+git clone https://github.com/zarif98/DeckySales.git
 cd deckysales
 ```
 
@@ -45,8 +45,9 @@ This command will:
    - `package.json`
    - `README.md`
    - `LICENSE`
+   - `NOTICE`
 4. Create a ZIP named:
-   - `deckysales-v<version>-beta.zip`
+   - `deckysales-v<version>.zip`
 5. Exclude common macOS metadata (`.DS_Store`, `__MACOSX/*`).
 6. Remove the temporary `DeckySales/` folder after packaging.
 
