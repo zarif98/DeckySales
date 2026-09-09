@@ -158,7 +158,6 @@ The plugin applies strict response filtering so compromised or malformed provide
 | `main.py` | Decky backend entrypoint and RPC bridge for settings load/save and migration hooks. |
 | `settings.py` | JSON settings manager used by backend RPC methods. |
 | `plugin.json` | Plugin manifest metadata (name, author, publish metadata, backend entry file). |
-| `deck.json` | Decky packaging/config metadata used by toolchain. |
 | `package.json` | JS package metadata, scripts, dependencies. |
 | `pnpm-lock.yaml` | Dependency lockfile for reproducible installs. |
 | `rollup.config.js` | Frontend bundle build configuration. |
