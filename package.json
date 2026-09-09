@@ -58,5 +58,6 @@
   "contributors": [
     "Elias (ebdevag) \u2014 original author of Deckdeals, which this is forked from",
     "Eugene Chefranov \u2014 Russian and Ukrainian translations"
-  ]
+  ],
+  "packageManager": "pnpm@9.15.9"
 }

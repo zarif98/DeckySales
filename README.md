@@ -14,6 +14,8 @@
 
 </div>
 
+[![CI](https://github.com/zarif98/deckysales/actions/workflows/ci.yml/badge.svg)](https://github.com/zarif98/deckysales/actions/workflows/ci.yml)
+
 ---
 
 > [!NOTE]
@@ -129,6 +131,18 @@ Tests cover two layers:
 `decky-frontend-lib` cannot load outside the Steam client, so vitest aliases it to a stub (`src/test/`) that records navigation calls. Only the Steam Store DOM injection and on-screen rendering need a real device.
 
 > **Note:** `@types/node` is pinned to v18 because TypeScript 4.7 cannot parse newer versions - it fails with syntax errors in the `.d.ts` and aborts before reaching `src/`, silently disabling type checking for the whole project. Run `pnpm typecheck` and confirm it reports errors in `src/` paths, not in `node_modules`.
+
+## Releases
+
+Every push runs [CI](.github/workflows/ci.yml): type check, tests, build, and a packaging check that the zip contains what it should and that no test code leaked into the bundle. The installable zip is attached to each run as an artifact, so the latest build is always one download away without cutting a release.
+
+To publish a release, bump the version in **both** `package.json` and `plugin.json`, then tag it:
+
+```bash
+git tag v1.2.0 && git push origin v1.2.0
+```
+
+[`release.yml`](.github/workflows/release.yml) verifies the tag matches both manifests, re-runs the type check and tests, and publishes a GitHub Release with the zip attached and generated notes. CI fails the build if the two version fields ever disagree, since the Decky store reads `plugin.json` while the zip is named from `package.json`.
 
 ## Security Review
 

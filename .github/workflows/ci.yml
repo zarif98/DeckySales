@@ -1,0 +1,85 @@
+name: CI
+
+# Build, type check and test every push and pull request, and leave a
+# ready-to-install zip attached to each run so the latest build is always
+# one download away without cutting a release.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # corepack reads "packageManager" from package.json, so the CI pnpm is
+      # exactly the one the lockfile was written with. Avoids a third-party
+      # action for something the toolchain already does.
+      - name: Enable corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # plugin.json's version is what the Decky store reads; package.json's is
+      # what the archive script names the zip after. A mismatch ships a plugin
+      # whose filename and manifest disagree, which is easy to miss by hand.
+      - name: Check version fields agree
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          PLG=$(node -p "require('./plugin.json').version")
+          echo "package.json=$PKG  plugin.json=$PLG"
+          if [ "$PKG" != "$PLG" ]; then
+            echo "::error file=plugin.json::version mismatch: package.json=$PKG, plugin.json=$PLG"
+            exit 1
+          fi
+
+      # Must report errors in src/ paths. If @types/node drifts ahead of what
+      # TypeScript 4.7 can parse, tsc aborts inside node_modules and silently
+      # checks nothing - which is how a real bug reached a release once.
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Package plugin
+        run: pnpm run archive
+
+      - name: Verify the package contains what it should
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          ZIP="deckysales-v${VERSION}.zip"
+          unzip -o -q "$ZIP" -d _verify
+          for f in DeckySales/dist/index.js DeckySales/main.py DeckySales/plugin.json DeckySales/LICENSE DeckySales/NOTICE; do
+            if [ ! -f "_verify/$f" ]; then
+              echo "::error::missing from package: $f"
+              exit 1
+            fi
+          done
+          if grep -q "vitest" _verify/DeckySales/dist/index.js; then
+            echo "::error::test code leaked into the bundle"
+            exit 1
+          fi
+          echo "Package OK:"; ls -R _verify/DeckySales
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: deckysales-${{ github.sha }}
+          path: deckysales-*.zip
+          if-no-files-found: error
+          retention-days: 30

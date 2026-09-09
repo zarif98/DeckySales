@@ -1,0 +1,80 @@
+name: Release
+
+# Cut a GitHub Release with the installable zip attached.
+#
+# Trigger by pushing a tag:  git tag v1.2.0 && git push origin v1.2.0
+# The tag must match the version in package.json, so the release, the manifest
+# and the zip filename can never disagree.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check the tag matches the manifests
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(node -p "require('./package.json').version")
+          PLG=$(node -p "require('./plugin.json').version")
+          echo "tag=$TAG  package.json=$PKG  plugin.json=$PLG"
+          if [ "$TAG" != "$PKG" ] || [ "$TAG" != "$PLG" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json ($PKG) / plugin.json ($PLG)"
+            exit 1
+          fi
+
+      # Never publish something that has not been type checked and tested.
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Package plugin
+        run: pnpm run archive
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          ZIP="deckysales-v${VERSION}.zip"
+
+          # On a tag push the tag already exists; on a manual run derive it from
+          # the manifest and let gh create it against the current commit.
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME}"
+          else
+            TAG="v${VERSION}"
+          fi
+          echo "Publishing $ZIP as $TAG"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists; replacing the asset."
+            gh release upload "$TAG" "$ZIP" --clobber
+          else
+            gh release create "$TAG" "$ZIP" \
+              --title "DeckySales $TAG" \
+              --generate-notes
+          fi
