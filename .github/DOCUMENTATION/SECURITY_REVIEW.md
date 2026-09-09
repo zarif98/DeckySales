@@ -130,7 +130,7 @@ The plugin applies strict response filtering so compromised or malformed provide
     plugin's own registered route; no URL from an API response is ever opened.
 - Data handling:
   - Wishlist membership is disclosed to ITAD only as Steam app ids, sent to the same
-    pricing endpoints used for store pages; nothing is sent to Optideck. No other
+    pricing endpoints used for store pages; nothing is sent to the credentials endpoint. No other
     wishlist data (ordering, priorities, dates added) leaves the device.
   - A failed price fetch never overwrites stored alert state, so an outage cannot
     clear the de-duplication history or blank the deals list.
@@ -169,7 +169,7 @@ The plugin applies strict response filtering so compromised or malformed provide
 | `gh-image.jpeg` | README screenshot asset. |
 | `src/index.tsx` | Frontend plugin bootstrap; initializes services and store injector. |
 | `src/patches/StoreInjector.ts` | Steam Store webview integration: route tracking, websocket debugger connection, UI inject/update/teardown. |
-| `src/service/ProviderAuthService.ts` | Fetches and strictly validates provider API credentials from Optideck endpoint; in-memory caching. |
+| `src/service/ProviderAuthService.ts` | Fetches and strictly validates provider API credentials from the credentials endpoint; in-memory caching. |
 | `src/service/PriceService.ts` | ITAD lookup/history retrieval, strict response checks, normalization for UI rendering. |
 | `src/service/WishlistService.ts` | Steam wishlist retrieval and scheduled cross-store deal alerts via Decky toasts. |
 | `src/service/ExchangeRateService.ts` | Exchange-rate retrieval with strict URL/payload validation and cache-first access. |

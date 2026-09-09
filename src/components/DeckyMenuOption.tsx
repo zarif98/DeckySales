@@ -683,8 +683,11 @@ const DeckyMenuOption = () => {
             <div style={{ color: '#8f98a0', fontSize: '11px', marginTop: '2px', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
               {t("attribution.line3")}
             </div>
-            <div style={{ color: '#6b7280', fontSize: '10px', marginTop: '2px', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+            <div style={{ color: '#8f98a0', fontSize: '11px', marginTop: '2px', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
               {t("attribution.line4")}
+            </div>
+            <div style={{ color: '#6b7280', fontSize: '10px', marginTop: '2px', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+              {t("attribution.line5")}
             </div>
           </div>
         </PanelSectionRow>

@@ -65,6 +65,7 @@ export const LANG_CODE: Record<string, string> = {
     "attribution.line2": "",
     "attribution.line3": "",
     "attribution.line4": "",
+    "attribution.line5": "",
     "settings.quickLinks.label": "",
     "settings.quickLinks.description": "",
     "settings.predictions.label": "",

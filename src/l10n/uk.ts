@@ -54,7 +54,8 @@ export const uk: Record<string, string> = {
     "attribution.line1": "Джерело: IsThereAnyDeal (ITAD) API",
     "attribution.line2": "Джерело: exchangerate-api.com",
     "attribution.line3": "Натхнення: IsThereAnyDeal Decky Plugin від JtdeGraaf",
-    "attribution.line4": "DeckySales від Optideck • github.com/draftdev-sd/deckysales",
+    "attribution.line4": "Форк Deckdeals від ebdevag",
+    "attribution.line5": "DeckySales • github.com/zarif98/DeckySales",
 
     // Store page (injected into Steam browser)
     "store.title": "DeckySales",
