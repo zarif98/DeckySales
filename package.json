@@ -1,6 +1,6 @@
 {
   "name": "deckysales",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Cross-store price comparison and wishlist sale alerts for the Steam Deck store, powered by IsThereAnyDeal.",
   "scripts": {
     "build": "shx rm -rf dist && rollup -c",
