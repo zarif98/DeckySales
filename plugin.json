@@ -13,6 +13,6 @@
     "resourceLink": "https://github.com/zarif98/DeckySales",
     "image": "https://raw.githubusercontent.com/zarif98/DeckySales/main/.github/DOCUMENTATION/images/best-price-now.jpeg"
   },
-  "version": "1.2.0",
+  "version": "1.2.1",
   "main": "main.py"
 }
