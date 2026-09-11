@@ -45,7 +45,7 @@ This command will:
    - `package.json`
    - `README.md`
    - `LICENSE`
-   - `NOTICE`
+   - everything in `defaults/` (currently `NOTICE`), matching how the plugin store's build packages it
 4. Create a ZIP named:
    - `deckysales-v<version>.zip`
 5. Exclude common macOS metadata (`.DS_Store`, `__MACOSX/*`).

@@ -161,4 +161,4 @@ Price data from the [IsThereAnyDeal API](https://isthereanydeal.com/), exchange 
 
 ## License
 
-[GPL-3.0-or-later](./LICENSE), as the upstream project has always been. See [`NOTICE`](./NOTICE) for full attribution and the list of changes made in this fork.
+[GPL-3.0-or-later](./LICENSE), as the upstream project has always been. See [`NOTICE`](./defaults/NOTICE) for full attribution and the list of changes made in this fork.

@@ -125,7 +125,8 @@ jobs:
           VERSION=$(unzip -p "$ZIP" DeckySales/package.json | jq -r '.version')
           echo "plugin.json name=$NAME  package.json version=$VERSION"
           [ "$NAME" = "DeckySales" ] || { echo "::error::plugin.json name is '$NAME'"; exit 1; }
-          for f in DeckySales/dist/index.js DeckySales/plugin.json DeckySales/package.json DeckySales/main.py; do
+          # NOTICE ships via defaults/, which the CLI copies into the plugin root.
+          for f in DeckySales/dist/index.js DeckySales/plugin.json DeckySales/package.json DeckySales/main.py DeckySales/NOTICE; do
             unzip -l "$ZIP" | grep -q " $f$" || { echo "::error::missing from store build: $f"; exit 1; }
           done
           if ! unzip -l "$ZIP" | grep -qE " DeckySales/LICENSE(\.md)?$"; then
