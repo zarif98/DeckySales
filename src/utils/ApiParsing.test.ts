@@ -3,6 +3,8 @@ import {
     buildShopsParam,
     isValidAppId,
     isValidCountry,
+    isValidCurrencyCode,
+    parseCurrencyApiRates,
     isValidSteamId64,
     parseBulkLookupMap,
     parseWishlistAppIds,
@@ -174,5 +176,73 @@ describe("input validators", () => {
 
     it.each(["us", "USA", "U", "", "U1"])("rejects country %j", (country) => {
         expect(isValidCountry(country)).toBe(false);
+    });
+});
+
+describe("parseCurrencyApiRates", () => {
+    const sample = {
+        date: "2026-09-10",
+        usd: { eur: 0.859, gbp: 0.738, ars: 1513.77, twd: 31.52, usd: 1 },
+    };
+
+    it("reads the table for the requested base and uppercases the codes", () => {
+        const result = parseCurrencyApiRates(sample, "USD");
+
+        expect(result?.base).toBe("USD");
+        expect(result?.rates).toMatchObject({ EUR: 0.859, GBP: 0.738, ARS: 1513.77, TWD: 31.52 });
+    });
+
+    it("drops crypto tickers and other non-currency identifiers", () => {
+        const result = parseCurrencyApiRates(
+            { usd: { eur: 0.9, usdt: 1, "1inch": 3.2, btc: 0.00001 } },
+            "USD"
+        );
+
+        // btc passes the three-letter shape, which is fine - it is simply
+        // never looked up. The point is that malformed codes never get in.
+        expect(Object.keys(result!.rates).sort()).toEqual(["BTC", "EUR"]);
+    });
+
+    it.each([
+        ["zero", 0],
+        ["negative", -1],
+        ["NaN", NaN],
+        ["infinite", Infinity],
+        ["a string", "0.9"],
+        ["null", null],
+    ])("drops a rate that is %s", (_label, bad) => {
+        const result = parseCurrencyApiRates({ usd: { eur: 0.9, gbp: bad } }, "USD");
+
+        expect(result?.rates).toEqual({ EUR: 0.9 });
+    });
+
+    it("rejects a payload whose table is for a different base", () => {
+        expect(parseCurrencyApiRates({ eur: { usd: 1.16 } }, "USD")).toBeNull();
+    });
+
+    it.each([
+        ["null", null],
+        ["an array", []],
+        ["a string", "nope"],
+        ["a table that is an array", { usd: [1, 2] }],
+        ["an empty table", { usd: {} }],
+        ["a table with nothing usable", { usd: { usdt: 1, "1inch": 2 } }],
+    ])("rejects %s", (_label, payload) => {
+        expect(parseCurrencyApiRates(payload, "USD")).toBeNull();
+    });
+
+    it("refuses an invalid base code before looking anything up", () => {
+        expect(parseCurrencyApiRates(sample, "usd")).toBeNull();
+        expect(parseCurrencyApiRates(sample, "US")).toBeNull();
+    });
+});
+
+describe("isValidCurrencyCode", () => {
+    it.each(["USD", "EUR", "TWD"])("accepts %s", (code) => {
+        expect(isValidCurrencyCode(code)).toBe(true);
+    });
+
+    it.each(["usd", "US", "USDT", "", "U5D"])("rejects %j", (code) => {
+        expect(isValidCurrencyCode(code)).toBe(false);
     });
 });

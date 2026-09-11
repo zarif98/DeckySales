@@ -20,18 +20,21 @@ export const CREDENTIALS_ENDPOINT = "https://api.optideck.gg/deckdeals/auth";
 
 export interface Credentials {
     itad_api_key: string;
-    exchange_rate_api_key: string;
 }
 
 /*
- * ProviderAuthService fetches provider API keys from the Optideck endpoint
- * and caches them in-memory for a limited duration.
+ * ProviderAuthService fetches the IsThereAnyDeal API key from the credentials
+ * endpoint and caches it in memory for a limited duration. A key entered by
+ * the user in settings takes precedence and bypasses the endpoint entirely.
+ *
+ * Currency rates no longer need a key (see ExchangeRateService), so the
+ * endpoint only has to serve one.
  *
  * Security model:
- * - Endpoint is pinned to a specific HTTPS host/path.
+ * - Endpoint is a single compile-time HTTPS constant.
  * - Response body size is bounded.
- * - Payload must match strict schema (exact keys only).
- * - Key values must match expected character set and length.
+ * - Payload must match a strict schema; unknown keys are rejected.
+ * - Key values must match the expected character set and length.
  * - Any failure falls back to existing cached credentials.
  */
 class ProviderAuthService {
@@ -44,7 +47,12 @@ class ProviderAuthService {
     private readonly ENDPOINT = CREDENTIALS_ENDPOINT;
     private readonly CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours
     private readonly MAX_RESPONSE_BYTES = 4096;
-    private readonly EXPECTED_KEYS: Array<keyof Credentials> = ["itad_api_key", "exchange_rate_api_key"];
+    /**
+     * Endpoints written for older versions also return an
+     * `exchange_rate_api_key`. It is accepted and ignored, so an existing
+     * deployment keeps working; any other unexpected key is still rejected.
+     */
+    private readonly LEGACY_KEYS = new Set(["exchange_rate_api_key"]);
     private readonly API_KEY_PATTERN = /^[A-Za-z0-9._-]{16,256}$/;
     private lastFetchTime: number = 0;
 
@@ -105,29 +113,19 @@ class ProviderAuthService {
         }
 
         const obj = payload as Record<string, unknown>;
-        const keys = Object.keys(obj);
 
-        if (keys.length !== this.EXPECTED_KEYS.length) {
-            return null;
-        }
-
-        for (const key of this.EXPECTED_KEYS) {
-            if (!Object.prototype.hasOwnProperty.call(obj, key)) {
+        for (const key of Object.keys(obj)) {
+            if (key !== "itad_api_key" && !this.LEGACY_KEYS.has(key)) {
                 return null;
             }
         }
 
         const itadKey = obj.itad_api_key;
-        const exchangeKey = obj.exchange_rate_api_key;
-
-        if (!this.isSafeApiKey(itadKey) || !this.isSafeApiKey(exchangeKey)) {
+        if (!this.isSafeApiKey(itadKey)) {
             return null;
         }
 
-        return {
-            itad_api_key: itadKey,
-            exchange_rate_api_key: exchangeKey
-        };
+        return { itad_api_key: itadKey };
     }
 
     // =========================================================================
@@ -212,11 +210,6 @@ class ProviderAuthService {
 
         const credentials = await this.fetchCredentials();
         return credentials?.itad_api_key || null;
-    }
-
-    public async getExchangeRateKey(): Promise<string | null> {
-        const credentials = await this.fetchCredentials();
-        return credentials?.exchange_rate_api_key || null;
     }
 }
 

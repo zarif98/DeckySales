@@ -85,3 +85,42 @@ export function buildShopsParam(stores: unknown): string {
     return safeIds.length > 0 ? safeIds.join(",") : String(STEAM_STORE_ID);
 }
 
+/** Currency rates in the shape the store page consumes. */
+export interface ParsedRates {
+    base: string;
+    rates: Record<string, number>;
+}
+
+/**
+ * Parse a response from the keyless currency API
+ * (github.com/fawazahmed0/exchange-api).
+ *
+ * Its shape is `{ "date": "...", "<base>": { "<code>": <rate>, ... } }` with
+ * lowercase codes, and the list mixes ISO currencies with crypto tickers and
+ * other identifiers ("usdt", "1inch"). Only three-letter alphabetic codes
+ * with a finite positive rate are kept, uppercased to match the rest of the
+ * plugin. Anything else about the payload being off means it is rejected.
+ */
+export function parseCurrencyApiRates(payload: unknown, base: string): ParsedRates | null {
+    if (!isValidCurrencyCode(base)) return null;
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+
+    const table = (payload as Record<string, unknown>)[base.toLowerCase()];
+    if (!table || typeof table !== "object" || Array.isArray(table)) return null;
+
+    const rates: Record<string, number> = {};
+    for (const [code, value] of Object.entries(table as Record<string, unknown>)) {
+        const upper = code.toUpperCase();
+        if (!isValidCurrencyCode(upper)) continue;
+        if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) continue;
+        rates[upper] = value;
+    }
+
+    if (Object.keys(rates).length === 0) return null;
+    return { base: base.toUpperCase(), rates };
+}
+
+/** ISO 4217-style code: exactly three uppercase letters. */
+export function isValidCurrencyCode(code: string): boolean {
+    return /^[A-Z]{3}$/.test(code);
+}

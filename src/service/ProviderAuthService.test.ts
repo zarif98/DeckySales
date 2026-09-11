@@ -35,10 +35,7 @@ async function boot(world: World = {}) {
         fetchNoCors: async (url: string) => {
             requests.push(url);
             if (world.endpointFails) return { success: false, result: null };
-            const body = world.payload ?? {
-                itad_api_key: HOSTED_KEY,
-                exchange_rate_api_key: HOSTED_KEY,
-            };
+            const body = world.payload ?? { itad_api_key: HOSTED_KEY };
             return { success: true, result: { body: JSON.stringify(body) } };
         },
     };
@@ -108,9 +105,10 @@ describe("credential resolution", () => {
     });
 
     it.each([
-        ["an extra field", { itad_api_key: HOSTED_KEY, exchange_rate_api_key: HOSTED_KEY, extra: 1 }],
-        ["a missing field", { itad_api_key: HOSTED_KEY }],
-        ["a malformed key", { itad_api_key: "short", exchange_rate_api_key: HOSTED_KEY }],
+        ["an unknown extra field", { itad_api_key: HOSTED_KEY, extra: 1 }],
+        ["no ITAD key", { exchange_rate_api_key: HOSTED_KEY }],
+        ["an empty object", {}],
+        ["a malformed key", { itad_api_key: "short" }],
         ["an array", []],
     ])("rejects an endpoint payload with %s", async (_label, payload) => {
         const { providerAuthService } = await boot({ payload });
@@ -118,11 +116,21 @@ describe("credential resolution", () => {
         expect(await providerAuthService.getItadKey()).toBeNull();
     });
 
-    it("still serves the exchange-rate key from the endpoint when a user ITAD key is set", async () => {
-        // The override covers ITAD only; currency conversion is unaffected.
-        const { providerAuthService, settingsModule, Setting } = await boot();
-        await settingsModule.SETTINGS.save(Setting.ITAD_API_KEY, USER_KEY);
+    it("accepts the legacy two-key reply, so an existing endpoint keeps working", async () => {
+        // The upstream endpoint still sends exchange_rate_api_key. Rejecting it
+        // would break the plugin before a replacement endpoint is deployed.
+        const { providerAuthService } = await boot({
+            payload: { itad_api_key: HOSTED_KEY, exchange_rate_api_key: HOSTED_KEY },
+        });
 
-        expect(await providerAuthService.getExchangeRateKey()).toBe(HOSTED_KEY);
+        expect(await providerAuthService.getItadKey()).toBe(HOSTED_KEY);
+    });
+
+    it("still rejects unknown fields alongside the legacy one", async () => {
+        const { providerAuthService } = await boot({
+            payload: { itad_api_key: HOSTED_KEY, exchange_rate_api_key: HOSTED_KEY, extra: 1 },
+        });
+
+        expect(await providerAuthService.getItadKey()).toBeNull();
     });
 });

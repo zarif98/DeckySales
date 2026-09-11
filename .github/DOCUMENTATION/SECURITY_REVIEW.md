@@ -79,9 +79,10 @@ The plugin applies strict response filtering so compromised or malformed provide
 - Response size bound:
   - Payload must be present and `<= 4096` bytes.
 - Strict schema allowlist:
-  - Object must contain exactly two keys: `itad_api_key`, `exchange_rate_api_key`.
-  - Extra keys are rejected.
-  - Missing keys are rejected.
+  - `itad_api_key` is required.
+  - `exchange_rate_api_key` is tolerated and ignored, so endpoints written for
+    older versions keep working; no longer used since exchange rates need no key.
+  - Any other key is rejected.
 - Strict value validation:
   - Keys must match `[A-Za-z0-9._-]{16,256}`.
 - Fail-closed behavior:
@@ -136,20 +137,31 @@ The plugin applies strict response filtering so compromised or malformed provide
     clear the de-duplication history or blank the deals list.
   - Notification de-duplication state is stored in local plugin settings only.
 
-### ExchangeRate API (`src/service/ExchangeRateService.ts`)
+### Currency exchange API (`src/service/ExchangeRateService.ts`)
+- No credentials:
+  - The free [Free Currency Exchange Rates API](https://github.com/fawazahmed0/exchange-api)
+    requires no key, so there is nothing to leak, rotate or rate-limit per user.
+    It replaced exchangerate-api.com, whose free tier allows 1,500 requests a
+    month on one shared key.
 - Endpoint pinning:
-  - Only HTTPS URL pattern `v6.exchangerate-api.com/v6/<key>/latest/<CURRENCY>` is accepted.
-- Request input validation:
-  - Currency codes must match `[A-Z]{3}`.
+  - Only two HTTPS mirrors published by the project are accepted, tried in order:
+    - `cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/<ccy>.json`
+    - `latest.currency-api.pages.dev/v1/currencies/<ccy>.json`
+  - The file name must be exactly three lowercase letters plus `.json`; query
+    strings and fragments are rejected.
+- Data sent:
+  - Only the target currency code, in the URL path.
 - Response size bound:
   - Response body must be present and `<= 2MB`.
 - Strict response checks:
-  - `result` must equal `"success"`.
-  - `base_code` must be a valid currency code.
-  - `conversion_rates` must be an object with positive finite numeric values.
-  - Invalid currency keys/rates are discarded; empty normalized results are rejected.
+  - The payload must contain an object keyed by the requested base currency.
+  - Only three-letter alphabetic codes with finite positive rates are kept;
+    crypto tickers and other identifiers in the feed are discarded.
+  - An empty result after filtering is rejected.
 - Fail-closed behavior:
-  - Invalid responses return `null`; caller continues without conversion rather than trusting malformed data.
+  - A failed or malformed mirror falls through to the next; if both fail the
+    service returns `null` and the store page shows prices without
+    cross-currency comparison, rather than trusting malformed data.
 
 ## Repository File Inventory and Purpose
 
@@ -171,7 +183,7 @@ The plugin applies strict response filtering so compromised or malformed provide
 | `src/service/ProviderAuthService.ts` | Fetches and strictly validates provider API credentials from the credentials endpoint; in-memory caching. |
 | `src/service/PriceService.ts` | ITAD lookup/history retrieval, strict response checks, normalization for UI rendering. |
 | `src/service/WishlistService.ts` | Steam wishlist retrieval and scheduled cross-store deal alerts via Decky toasts. |
-| `src/service/ExchangeRateService.ts` | Exchange-rate retrieval with strict URL/payload validation and cache-first access. |
+| `src/service/ExchangeRateService.ts` | Keyless exchange-rate retrieval from two pinned mirrors, with strict payload validation and cache-first access. |
 | `src/utils/Settings.ts` | Frontend settings API wrapper over backend RPC and in-memory cache. |
 | `src/utils/Cache.ts` | In-memory cache and subscriber notification utility. |
 | `src/utils/Stores.ts` | Static store metadata mapping used for display names/IDs. |

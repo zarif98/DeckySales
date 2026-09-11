@@ -1,15 +1,22 @@
 import { ServerAPI } from "decky-frontend-lib";
 import { CACHE } from "../utils/Cache";
-import { providerAuthService } from "./ProviderAuthService";
+import { isValidCurrencyCode, parseCurrencyApiRates } from "../utils/ApiParsing";
 
 /*
  * ExchangeRateService provides currency conversion support with cache-first reads.
  *
+ * Rates come from the free, keyless currency API at
+ * github.com/fawazahmed0/exchange-api, updated daily and covering every
+ * currency the plugin needs. It replaced exchangerate-api.com, whose free
+ * tier allows 1,500 requests a month on one key - shared by every user of
+ * the plugin, and exhausted within days at plugin-store scale.
+ *
  * Security model:
- * - Uses provider key from ProviderAuthService only.
- * - Calls fixed exchangerate-api HTTPS endpoint.
- * - Caches normalized rates object with timestamp-based freshness checks.
- * - Returns null on any validation/network parse failure.
+ * - No API key is involved, so nothing to leak or rotate.
+ * - Only two pinned HTTPS mirrors are contacted, tried in order.
+ * - The only thing sent is the target currency code, in the URL path.
+ * - Responses are size-bounded and strictly parsed; failure returns null and
+ *   the store page simply shows prices without cross-currency comparison.
  */
 export interface ExchangeRates {
     base: string;
@@ -25,27 +32,38 @@ class ExchangeRateService {
     private serverApi: ServerAPI | undefined;
     private readonly CACHE_KEY = "exchange_rates";
     private readonly CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
-    private readonly API_HOST = "v6.exchangerate-api.com";
     private readonly MAX_RESPONSE_BYTES = 2 * 1024 * 1024; // 2MB hard cap
+    /**
+     * The same data, published to two independent hosts by the project
+     * itself. If jsDelivr is unreachable the Cloudflare mirror is tried.
+     */
+    private readonly MIRRORS: ReadonlyArray<{ host: string; prefix: string }> = [
+        { host: "cdn.jsdelivr.net", prefix: "/npm/@fawazahmed0/currency-api@latest/v1/currencies/" },
+        { host: "latest.currency-api.pages.dev", prefix: "/v1/currencies/" },
+    ];
 
     public init(serverApi: ServerAPI) {
         this.serverApi = serverApi;
     }
 
     private isValidCurrencyCode(currency: string): boolean {
-        return /^[A-Z]{3}$/.test(currency);
+        return isValidCurrencyCode(currency);
     }
 
-    private buildRatesUrl(apiKey: string, baseCurrency: string): string {
-        const url = new URL(`https://${this.API_HOST}/v6/${apiKey}/latest/${baseCurrency}`);
-        return url.toString();
+    private buildRatesUrl(mirror: { host: string; prefix: string }, baseCurrency: string): string {
+        return `https://${mirror.host}${mirror.prefix}${baseCurrency.toLowerCase()}.json`;
     }
 
+    /** Only the pinned mirrors, and only a three-letter currency file on them. */
     private isAllowedRatesUrl(urlString: string): boolean {
         try {
             const url = new URL(urlString);
-            const expectedPath = /^\/v6\/[A-Za-z0-9._-]{16,256}\/latest\/[A-Z]{3}$/;
-            return url.protocol === "https:" && url.hostname === this.API_HOST && expectedPath.test(url.pathname);
+            if (url.protocol !== "https:" || url.search || url.hash) return false;
+            return this.MIRRORS.some(m =>
+                url.hostname === m.host &&
+                url.pathname.startsWith(m.prefix) &&
+                /^[a-z]{3}\.json$/.test(url.pathname.slice(m.prefix.length))
+            );
         } catch {
             return false;
         }
@@ -59,36 +77,6 @@ class ExchangeRateService {
             return result;
         }
         return null;
-    }
-
-    private parseStrictRatesPayload(payload: unknown, fallbackBase: string): ExchangeRates | null {
-        if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-            return null;
-        }
-
-        const obj = payload as Record<string, unknown>;
-        if (obj.result !== "success") return null;
-        if (typeof obj.base_code !== "string" || !this.isValidCurrencyCode(obj.base_code)) return null;
-        if (!obj.conversion_rates || typeof obj.conversion_rates !== "object" || Array.isArray(obj.conversion_rates)) return null;
-
-        const rawRates = obj.conversion_rates as Record<string, unknown>;
-        const normalizedRates: Record<string, number> = {};
-        const entries = Object.entries(rawRates);
-        if (entries.length === 0) return null;
-
-        for (const [code, value] of entries) {
-            if (!this.isValidCurrencyCode(code)) continue;
-            if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) continue;
-            normalizedRates[code] = value;
-        }
-
-        if (Object.keys(normalizedRates).length === 0) return null;
-
-        return {
-            base: obj.base_code || fallbackBase,
-            rates: normalizedRates,
-            timestamp: Date.now()
-        };
     }
 
     // =========================================================================
@@ -186,54 +174,46 @@ class ExchangeRateService {
 
     // =========================================================================
     // PART 5: Remote Fetch + Parse + Cache Write
-    // Purpose: Retrieve latest rates from provider and persist normalized shape.
+    // Purpose: Retrieve the latest rates, trying each mirror in turn.
     // Security:
-    // - Requires initialized ServerAPI and provider key.
-    // - Uses fixed HTTPS URL format.
-    // - Rejects non-success payloads and malformed response shapes.
+    // - No key required; pinned HTTPS hosts and paths only.
+    // - Rejects malformed or oversized payloads per mirror.
     // =========================================================================
     private async fetchExchangeRates(baseCurrency: string): Promise<ExchangeRates | null> {
         if (!this.serverApi) return null;
         if (!this.isValidCurrencyCode(baseCurrency)) return null;
 
+        for (const mirror of this.MIRRORS) {
+            const rates = await this.fetchFromMirror(mirror, baseCurrency);
+            if (rates) {
+                await CACHE.setValue(`${this.CACHE_KEY}_${baseCurrency}`, rates);
+                return rates;
+            }
+        }
+
+        console.error("[DeckySales] Exchange rates unavailable from every mirror.");
+        return null;
+    }
+
+    private async fetchFromMirror(
+        mirror: { host: string; prefix: string },
+        baseCurrency: string
+    ): Promise<ExchangeRates | null> {
+        const url = this.buildRatesUrl(mirror, baseCurrency);
+        if (!this.isAllowedRatesUrl(url)) return null;
+
         try {
-            const apiKey = await providerAuthService.getExchangeRateKey();
-            if (!apiKey) return null;
-
-            const url = this.buildRatesUrl(apiKey, baseCurrency);
-            if (!this.isAllowedRatesUrl(url)) {
-                console.error("Exchange rate URL failed security policy.");
-                return null;
-            }
-
-            // fetchNoCors might not support signal/timeout, so we'll rely on its default timeout
-            const response = await this.serverApi.fetchNoCors(url, { method: "GET" });
-
-            if (!response.success) {
-                console.error("Failed to fetch exchange rates");
-                return null;
-            }
+            const response = await this.serverApi!.fetchNoCors(url, { method: "GET" });
+            if (!response.success) return null;
 
             const body = this.parseBodyString(response.result);
-            if (!body || body.length > this.MAX_RESPONSE_BYTES) {
-                console.error("Exchange rate payload missing or too large.");
-                return null;
-            }
+            if (!body || body.length > this.MAX_RESPONSE_BYTES) return null;
 
-            const parsed = JSON.parse(body);
-            const rates = this.parseStrictRatesPayload(parsed, baseCurrency);
-            if (!rates) {
-                console.error("Invalid exchange rate response.");
-                return null;
-            }
+            const parsed = parseCurrencyApiRates(JSON.parse(body), baseCurrency);
+            if (!parsed) return null;
 
-            // Cache the rates
-            const cacheKey = `${this.CACHE_KEY}_${baseCurrency}`;
-            await CACHE.setValue(cacheKey, rates);
-
-            return rates;
+            return { ...parsed, timestamp: Date.now() };
         } catch {
-            console.error("Error fetching exchange rates.");
             return null;
         }
     }

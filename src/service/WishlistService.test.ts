@@ -80,7 +80,7 @@ function makeServerApi(world: WorldState) {
 
             // Provider credentials.
             if (target.hostname === "api.optideck.gg") {
-                return json({ itad_api_key: API_KEY, exchange_rate_api_key: API_KEY });
+                return json({ itad_api_key: API_KEY });
             }
 
             // Steam's wishlist API.

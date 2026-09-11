@@ -3,13 +3,12 @@
 # Deploy from this directory:
 #   wrangler deploy
 #
-# Then set the keys as secrets (they are never stored in this file):
+# Then set the key as a secret (it is never stored in this file):
 #   wrangler secret put ITAD_API_KEY
-#   wrangler secret put EXCHANGE_RATE_API_KEY
 
 name = "deckysales-credentials"
 main = "credentials-worker.js"
 compatibility_date = "2026-01-01"
 
-# No KV, no D1, no bindings — this returns two strings from the environment.
+# No KV, no D1, no bindings — this returns one string from the environment.
 # Keeping it dependency-free means nothing to maintain and nothing to bill.

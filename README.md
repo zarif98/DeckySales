@@ -81,7 +81,7 @@ Your wishlist is read from Steam's public wishlist API using the SteamID of the 
 | :--- | :--- | :--- |
 | **Credentials endpoint** | Supplies the managed API keys. Self-hostable — see [`server/`](./server/README.md). Never contacted if you supply your own key. | An `X-App-ID` header |
 | **IsThereAnyDeal** | Current prices, historic lows, graph data | App ID, country code, store IDs |
-| **ExchangeRate-API** | Daily rates for cross-currency comparison | Target currency |
+| **[Free Currency Exchange Rates API](https://github.com/fawazahmed0/exchange-api)** (via jsDelivr, Cloudflare mirror as fallback) | Daily rates for cross-currency comparison. No key, no account | Target currency code |
 | **Steam Web API** | Reads your public wishlist, only when alerts are enabled | Your SteamID64 |
 
 All requests are made from your Deck through Decky's network layer. Your Steam account, library and inventory are never accessed.
@@ -157,7 +157,7 @@ Russian and Ukrainian translations by [Eugene Chefranov](https://github.com/chef
 
 Original inspiration: the [IsThereAnyDeal Decky Plugin](https://github.com/JtdeGraaf/IsThereAnyDeal-DeckyPlugin) by JtdeGraaf.
 
-Price data from the [IsThereAnyDeal API](https://isthereanydeal.com/), exchange rates from [ExchangeRate-API](https://www.exchangerate-api.com/).
+Price data from the [IsThereAnyDeal API](https://isthereanydeal.com/), exchange rates from the [Free Currency Exchange Rates API](https://github.com/fawazahmed0/exchange-api) by fawazahmed0.
 
 ## License
 
