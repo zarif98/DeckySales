@@ -83,3 +83,58 @@ jobs:
           path: deckysales-*.zip
           if-no-files-found: error
           retention-days: 30
+
+  store-build:
+    name: Store build (Decky CLI)
+    runs-on: ubuntu-latest
+    # Reproduces the plugin store's own build: same CLI release, same command,
+    # same directory layout (build-plugins.yml in decky-plugin-database). The
+    # store builds your repo with this, not with our archive script, so a
+    # failure here is a failure the reviewer would see on the submission PR.
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The store checks plugins out as plugins/<name>; with
+          # "-s directory" the CLI names the zip after that directory.
+          path: plugins/DeckySales
+
+      - name: Download Decky CLI (the version the store uses)
+        run: |
+          mkdir -p /tmp/decky-cli
+          curl -fsSL -o /tmp/decky-cli/decky \
+            "https://github.com/SteamDeckHomebrew/cli/releases/download/0.0.7/decky-linux-x86_64"
+          chmod +x /tmp/decky-cli/decky
+          echo "/tmp/decky-cli" >> "$GITHUB_PATH"
+
+      - name: Build exactly as the store does
+        run: |
+          # Run as root to get around Docker's permissions, as the store does.
+          sudo "$(which decky)" plugin build -b -o /tmp/output -s directory plugins/DeckySales
+          sudo chown -R "$(whoami)" plugins/DeckySales /tmp/output
+
+      - name: Check what the store would publish
+        run: |
+          ZIP=/tmp/output/DeckySales.zip
+          if [ ! -f "$ZIP" ]; then
+            echo "::error::store build produced no DeckySales.zip"; ls -la /tmp/output; exit 1
+          fi
+          unzip -l "$ZIP"
+          # The store's upload step reads these two files out of the zip.
+          NAME=$(unzip -p "$ZIP" DeckySales/plugin.json | jq -r '.name')
+          VERSION=$(unzip -p "$ZIP" DeckySales/package.json | jq -r '.version')
+          echo "plugin.json name=$NAME  package.json version=$VERSION"
+          [ "$NAME" = "DeckySales" ] || { echo "::error::plugin.json name is '$NAME'"; exit 1; }
+          for f in DeckySales/dist/index.js DeckySales/plugin.json DeckySales/package.json DeckySales/main.py; do
+            unzip -l "$ZIP" | grep -q " $f$" || { echo "::error::missing from store build: $f"; exit 1; }
+          done
+          if ! unzip -l "$ZIP" | grep -qE " DeckySales/LICENSE(\.md)?$"; then
+            echo "::error::no LICENSE in the store build"; exit 1
+          fi
+
+      - name: Upload store build
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-build-${{ github.sha }}
+          path: /tmp/output/*.zip
+          retention-days: 14
