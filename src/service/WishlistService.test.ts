@@ -1,4 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CREDENTIALS_ENDPOINT } from "./ProviderAuthService";
+
+/** Derived from the real constant, so the fake follows wherever it points. */
+const CREDENTIALS_HOST = new URL(CREDENTIALS_ENDPOINT).hostname;
 
 /*
  * End-to-end tests for the wishlist alert flow, with Steam and ITAD faked.
@@ -79,7 +83,7 @@ function makeServerApi(world: WorldState) {
             const target = new URL(url);
 
             // Provider credentials.
-            if (target.hostname === "api.optideck.gg") {
+            if (target.hostname === CREDENTIALS_HOST) {
                 return json({ itad_api_key: API_KEY });
             }
 
@@ -354,7 +358,7 @@ describe("wishlist alerts, end to end", () => {
         expect(toasts).toHaveLength(1);
     });
 
-    it("sends the SteamID only to Steam, and never to ITAD or Optideck", async () => {
+    it("sends the SteamID only to Steam, and never to ITAD or the credentials endpoint", async () => {
         const world = makeWorld({ deals: { "game-bg3": [deal()] } });
         const { wishlistService, requests } = await boot(world);
 

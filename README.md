@@ -79,7 +79,7 @@ Your wishlist is read from Steam's public wishlist API using the SteamID of the 
 
 | Service | Purpose | What is sent |
 | :--- | :--- | :--- |
-| **Credentials endpoint** | Supplies the managed API keys. Self-hostable — see [`server/`](./server/README.md). Never contacted if you supply your own key. | An `X-App-ID` header |
+| **Credentials endpoint** (`deckysales-credentials.zarif98.workers.dev`) | Supplies the shared IsThereAnyDeal key. A free Cloudflare Worker run by this project; self-hostable — see [`server/`](./server/README.md). Never contacted if you supply your own key. | An `X-App-ID` header |
 | **IsThereAnyDeal** | Current prices, historic lows, graph data | App ID, country code, store IDs |
 | **[Free Currency Exchange Rates API](https://github.com/fawazahmed0/exchange-api)** (via jsDelivr, Cloudflare mirror as fallback) | Daily rates for cross-currency comparison. No key, no account | Target currency code |
 | **Steam Web API** | Reads your public wishlist, only when alerts are enabled | Your SteamID64 |

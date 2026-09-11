@@ -11,12 +11,7 @@ import { SETTINGS, Setting } from "../utils/Settings";
  *
  * See `server/README.md` for deploying your own.
  */
-// TODO(fork): replace with your own deployment - see server/README.md.
-// This is the last remaining dependency on the upstream project's
-// infrastructure. It is left pointing at the working upstream path so builds
-// are not dead in the meantime; users who set their own key in
-// Settings > API Access bypass it entirely.
-export const CREDENTIALS_ENDPOINT = "https://api.optideck.gg/deckdeals/auth";
+export const CREDENTIALS_ENDPOINT = "https://deckysales-credentials.zarif98.workers.dev";
 
 export interface Credentials {
     itad_api_key: string;
