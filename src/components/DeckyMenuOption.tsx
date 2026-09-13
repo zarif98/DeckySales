@@ -1,5 +1,5 @@
 import { useSettings } from '../hooks/useSettings'
-import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from 'decky-frontend-lib'
+import { ButtonItem, DropdownItem, Navigation, PanelSection, PanelSectionRow, TextField, ToggleField } from '@decky/ui'
 import { STORES } from '../utils/Stores';
 import { PROVIDERS } from '../utils/Providers';
 import { useEffect, useState } from 'react';
@@ -74,17 +74,24 @@ const DeckyMenuOption = () => {
     setWishlistStatus(null);
     try {
       const result = await wishlistService.check();
+      let status: string;
       if (result.error) {
-        setWishlistStatus(wishlistErrorText(result.error));
+        status = wishlistErrorText(result.error);
       } else if (result.seeded) {
         // A silent first pass would otherwise report "no new deals", which reads
         // as a failure to someone who just pressed the button.
-        setWishlistStatus(t("settings.wishlist.status.seeded"));
+        status = t("settings.wishlist.status.seeded");
       } else if (result.found > 0) {
-        setWishlistStatus(t("settings.wishlist.status.found").replace("{count}", String(result.found)));
+        status = t("settings.wishlist.status.found").replace("{count}", String(result.found));
       } else {
-        setWishlistStatus(t("settings.wishlist.status.none"));
+        status = t("settings.wishlist.status.none");
       }
+      if (result.limited) {
+        status += " " + t("settings.wishlist.status.limited")
+          .replace("{checked}", String(result.limited.checked))
+          .replace("{total}", String(result.limited.total));
+      }
+      setWishlistStatus(status);
     } finally {
       setWishlistChecking(false);
       setLastCheck(Number(await SETTINGS.load(Setting.WISHLIST_LAST_CHECK)) || 0);

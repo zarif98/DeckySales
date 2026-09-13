@@ -1,8 +1,6 @@
-import {
-  definePlugin,
-  ServerAPI,
-  staticClasses,
-} from "decky-frontend-lib";
+import { staticClasses } from "@decky/ui";
+import { definePlugin, routerHook } from "@decky/api";
+import { createPlatform } from "./platform";
 import { FaChartLine } from "react-icons/fa";
 
 import DeckyMenuOption from "./components/DeckyMenuOption";
@@ -18,7 +16,8 @@ import { wishlistService } from "./service/WishlistService";
 import { t } from "./l10n";
 
 
-export default definePlugin((serverApi: ServerAPI) => {
+export default definePlugin(() => {
+  const serverApi = createPlatform()
 
 
   Cache.init()
@@ -31,19 +30,20 @@ export default definePlugin((serverApi: ServerAPI) => {
   void wishlistService.start()
 
   // Full-page deals list, opened directly by wishlist notifications.
-  serverApi.routerHook.addRoute(DEALS_ROUTE, DealsPage)
+  routerHook.addRoute(DEALS_ROUTE, DealsPage)
 
   // injectStore returns a teardown function
   const stopStoreInjector = injectStore(serverApi)
 
 
   return {
-    title: <div className={staticClasses.Title}>{t("plugin.title")}</div>,
+    name: "DeckySales",
+    titleView: <div className={staticClasses.Title}>{t("plugin.title")}</div>,
     content: <DeckyMenuOption />,
     icon: <FaChartLine />,
     onDismount() {
       stopStoreInjector()
-      serverApi.routerHook.removeRoute(DEALS_ROUTE)
+      routerHook.removeRoute(DEALS_ROUTE)
       void wishlistService.stop()
     },
   };

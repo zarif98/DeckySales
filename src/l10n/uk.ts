@@ -110,6 +110,7 @@ export const uk: Record<string, string> = {
     "settings.wishlist.viewDeals.label": "Відкрити список знижок",
     "settings.wishlist.status.reset": "Історію сповіщень очищено. Запустіть перевірку, щоб знову побачити всі поточні знижки.",
     "settings.wishlist.status.seeded": "Поточні знижки записано як відправну точку. Ви отримаєте сповіщення, коли почнуться нові.",
+    "settings.wishlist.status.limited": "Перевірено лише перші {checked} з {total} ігор списку бажаного.",
     "settings.wishlist.error.noSteamId": "Не вдалося визначити ваш обліковий запис Steam. Спробуйте знову, коли Steam завершить вхід.",
     "settings.wishlist.error.private": "Ваш список бажаного в Steam прихований. Зробіть його публічним у налаштуваннях приватності Steam, щоб увімкнути сповіщення.",
     "settings.wishlist.error.generic": "Не вдалося перевірити список бажаного. Повторимо автоматично.",

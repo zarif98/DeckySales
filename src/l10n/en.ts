@@ -78,6 +78,7 @@ export const en: Record<string, string> = {
     "settings.wishlist.viewDeals.label": "View Deals List",
     "settings.wishlist.status.reset": "Alert history cleared. Run a check to be told about current sales again.",
     "settings.wishlist.status.seeded": "Baseline set from the sales running now. You will be alerted when new ones start.",
+    "settings.wishlist.status.limited": "Only the first {checked} of {total} wishlist games were checked.",
     "settings.wishlist.error.noSteamId": "Could not read your Steam account. Try again once Steam has finished signing in.",
     "settings.wishlist.error.private": "Your Steam wishlist is private. Set it to public in your Steam privacy settings to enable alerts.",
     "settings.wishlist.error.generic": "Wishlist check failed. It will retry automatically.",

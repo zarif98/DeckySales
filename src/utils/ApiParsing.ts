@@ -13,8 +13,8 @@ export function isValidSteamId64(value: unknown): value is string {
 }
 
 export type WishlistParseResult =
-    | { appIds: string[] }
-    | { appIds: []; error: "private" };
+    | { appIds: string[]; total: number }
+    | { appIds: []; total: 0; error: "private" };
 
 /**
  * Extract wishlist app ids from Steam's wishlist API payload.
@@ -26,16 +26,20 @@ export type WishlistParseResult =
  */
 export function parseWishlistAppIds(payload: unknown, maxApps: number): WishlistParseResult {
     const items = (payload as any)?.response?.items;
-    if (!Array.isArray(items)) return { appIds: [], error: "private" };
+    if (!Array.isArray(items)) return { appIds: [], total: 0, error: "private" };
 
+    // `total` counts every valid entry, so a caller can tell the user when the
+    // cap cut their wishlist short instead of silently checking part of it.
     const appIds: string[] = [];
+    let total = 0;
     for (const item of items) {
-        if (appIds.length >= maxApps) break;
         const appId = (item as any)?.appid;
-        if (Number.isInteger(appId) && appId > 0) appIds.push(String(appId));
+        if (!Number.isInteger(appId) || appId <= 0) continue;
+        total++;
+        if (appIds.length < maxApps) appIds.push(String(appId));
     }
 
-    return { appIds };
+    return { appIds, total };
 }
 
 /**

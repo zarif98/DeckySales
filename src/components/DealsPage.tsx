@@ -1,4 +1,4 @@
-import { Focusable, Navigation, PanelSection, PanelSectionRow, staticClasses } from "decky-frontend-lib";
+import { Focusable, Navigation, PanelSection, PanelSectionRow, staticClasses } from "@decky/ui";
 import { useEffect, useState } from "react";
 import { SETTINGS, Setting } from "../utils/Settings";
 import { RowDeal, formatRowPrice, sortRowDeals, storePageUrlFor } from "../utils/Deals";

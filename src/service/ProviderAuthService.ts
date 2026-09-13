@@ -1,4 +1,4 @@
-import { ServerAPI } from "decky-frontend-lib";
+import type { DeckyServer as ServerAPI } from "../platform";
 import { SETTINGS, Setting } from "../utils/Settings";
 
 /*

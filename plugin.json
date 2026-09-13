@@ -2,6 +2,7 @@
   "name": "DeckySales",
   "author": "zarif98",
   "flags": [],
+  "api_version": 1,
   "publish": {
     "tags": [
       "IsThereAnyDeal",

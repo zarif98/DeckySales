@@ -109,10 +109,10 @@ Tests cover two layers:
 - **Pure logic** (`src/utils`) — deal normalization, which offer triggers an alert, notification de-duplication and first-run seeding, deals-list ordering, and validation of everything arriving from an external API.
 - **The wishlist flow end to end** (`src/service/WishlistService.test.ts`) — driven through a fake `ServerAPI`, so a sale can be made to start, deepen, lapse and return and the resulting notification asserted, without waiting for a real sale.
 
-`decky-frontend-lib` cannot load outside the Steam client, so vitest aliases it to a stub in `src/test/` that records navigation calls. Only the Steam store DOM injection and on-screen rendering need real hardware.
+`@decky/ui` cannot load outside the Steam client, so vitest aliases it to a stub in `src/test/` that records navigation calls. The Python backend's settings storage and Deckdeals migration are tested with `python3 -m unittest discover -s tests_py`. Only the Steam store DOM injection and on-screen rendering need real hardware.
 
 > [!IMPORTANT]
-> Use **pnpm**, not npm. The lockfile pins `@types/node` to a version TypeScript 4.9 can parse; installing with npm resolves a newer one whose `.d.ts` fails to parse, and `tsc` then aborts inside `node_modules` before reaching `src/` — type checking the whole project into silence. If `pnpm typecheck` ever reports errors in `node_modules` paths, that is the cause.
+> Use **pnpm**, not npm. The lockfile is what CI and the plugin store build from, and npm ignores it.
 
 
 ## Releases

@@ -1,4 +1,4 @@
-import { ServerAPI } from "decky-frontend-lib";
+import type { DeckyServer as ServerAPI } from "../platform";
 import { SETTINGS, Setting } from "../utils/Settings";
 import { ALL_STORE_IDS, STORES } from "../utils/Stores";
 import { Deal, normalizeDeals } from "../utils/Deals";
@@ -314,6 +314,22 @@ class PriceService {
     // - Uses HTTPS ITAD API endpoints only.
     // - Fails closed to { data: null, error } on malformed responses.
     // =========================================================================
+    /**
+     * A request URL with its API key removed, safe to keep in diagnostics.
+     * Every ITAD URL carries key= in the query string, so anything that
+     * surfaces a URL - a log line, a bug report, a debug object - must go
+     * through this first.
+     */
+    private redactUrl(url: string): string {
+        try {
+            const u = new URL(url);
+            if (u.searchParams.has("key")) u.searchParams.set("key", "REDACTED");
+            return u.toString();
+        } catch {
+            return "";
+        }
+    }
+
     public async getLowestPrice(appId: string): Promise<{ data: PriceData | null, error?: string, debug?: any }> {
         if (!this.serverApi) return { data: null, error: "ServerAPI not initialized" };
         if (!isValidAppId(appId)) return { data: null, error: "Invalid app id format" };
@@ -337,17 +353,17 @@ class PriceService {
             // PART 3A: Lookup ITAD game metadata from Steam app id.
             // Removed <any> generic type argument to avoid "Untyped function calls..." error
             if (!this.isAllowedApiUrl(lookupUrl)) {
-                return { data: null, error: "Lookup URL failed security policy", debug: { lookupUrl } };
+                return { data: null, error: "Lookup URL failed security policy", debug: { lookupUrl: this.redactUrl(lookupUrl) } };
             }
             const lookupRes = await this.serverApi.fetchNoCors(lookupUrl, { method: "GET" });
 
             if (!lookupRes.success) {
-                return { data: null, error: "Lookup fetch failed", debug: { lookupUrl } };
+                return { data: null, error: "Lookup fetch failed", debug: { lookupUrl: this.redactUrl(lookupUrl) } };
             }
 
             const parsedLookup = this.parseLookupResponse(lookupRes.result);
             if (!parsedLookup) {
-                return { data: null, error: "Invalid lookup response", debug: { lookupUrl } };
+                return { data: null, error: "Invalid lookup response", debug: { lookupUrl: this.redactUrl(lookupUrl) } };
             }
 
             const gameId = parsedLookup.gameId;
@@ -363,12 +379,12 @@ class PriceService {
 
             // Removed <any> generic type argument to avoid "Untyped function calls..." error
             if (!this.isAllowedApiUrl(historyUrl)) {
-                return { data: null, error: "History URL failed security policy", debug: { lookupUrl, historyUrl } };
+                return { data: null, error: "History URL failed security policy", debug: { lookupUrl: this.redactUrl(lookupUrl), historyUrl: this.redactUrl(historyUrl) } };
             }
             const historyRes = await this.serverApi.fetchNoCors(historyUrl, { method: "GET" });
 
             if (!historyRes.success) {
-                return { data: null, error: "History fetch failed", debug: { lookupUrl, historyUrl } };
+                return { data: null, error: "History fetch failed", debug: { lookupUrl: this.redactUrl(lookupUrl), historyUrl: this.redactUrl(historyUrl) } };
             }
 
             const historyData = this.parseHistoryResponse(historyRes.result);
@@ -377,11 +393,11 @@ class PriceService {
                 return {
                     data: null,
                     error: "Invalid history response",
-                    debug: { lookupUrl, historyUrl }
+                    debug: { lookupUrl: this.redactUrl(lookupUrl), historyUrl: this.redactUrl(historyUrl) }
                 };
             }
             if (historyData.length === 0) {
-                return { data: null, error: "No history entries", debug: { lookupUrl, historyUrl } };
+                return { data: null, error: "No history entries", debug: { lookupUrl: this.redactUrl(lookupUrl), historyUrl: this.redactUrl(historyUrl) } };
             }
 
             // PART 3C: Parse/normalize deal entries and compute lowest value.
@@ -438,15 +454,15 @@ class PriceService {
                             itad: `https://isthereanydeal.com/game/${slug}/`
                         }
                     },
-                    debug: { lookupUrl, historyUrl, entries: historyData.length }
+                    debug: { lookupUrl: this.redactUrl(lookupUrl), historyUrl: this.redactUrl(historyUrl), entries: historyData.length }
                 };
             }
 
-            return { data: null, error: "No valid deals in history", debug: { lookupUrl, historyUrl } };
+            return { data: null, error: "No valid deals in history", debug: { lookupUrl: this.redactUrl(lookupUrl), historyUrl: this.redactUrl(historyUrl) } };
 
         } catch (e) {
             console.error(e);
-            return { data: null, error: "Exception: " + e, debug: { lookupUrl, historyUrl } };
+            return { data: null, error: "Exception: " + e, debug: { lookupUrl: this.redactUrl(lookupUrl), historyUrl: this.redactUrl(historyUrl) } };
         }
     }
 }

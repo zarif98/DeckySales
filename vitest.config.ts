@@ -12,8 +12,8 @@ export default defineConfig({
     resolve: {
         alias: {
             // The real library only loads inside the Steam client - see the stub.
-            "decky-frontend-lib": fileURLToPath(
-                new URL("./src/test/decky-frontend-lib.stub.ts", import.meta.url)
+            "@decky/ui": fileURLToPath(
+                new URL("./src/test/decky-ui.stub.ts", import.meta.url)
             ),
         },
     },

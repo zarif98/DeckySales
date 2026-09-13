@@ -35,7 +35,11 @@ Stored settings keys:
 Storage path and flow:
 - Frontend settings reads/writes go through Decky RPC in `src/utils/Settings.ts` via `settings_load` and `settings_save`.
 - Backend persistence is handled by `SettingsManager` in `settings.py`.
-- File path root is `DECKY_PLUGIN_SETTINGS_DIR` (from `main.py` environment), with `settings.json` as the file name.
+- File path root is `DECKY_PLUGIN_SETTINGS_DIR` (from the `decky` module), with `settings.json` as the file name.
+- Writes are atomic: a temporary file in the same directory is fsynced and renamed over the old one, so an interrupted save cannot leave an empty or truncated file.
+- An unreadable settings file is moved aside to `settings.json.corrupt` and logged, never silently discarded, so a user's own API key remains recoverable.
+- Values JSON cannot represent are rejected before anything is written.
+- On first run, settings from an earlier `Deckdeals` install are copied (not moved) if none exist yet.
 
 Privacy guarantees:
 - No Steam account credentials are stored.
@@ -174,7 +178,7 @@ The plugin applies strict response filtering so compromised or malformed provide
 | `pnpm-lock.yaml` | Dependency lockfile for reproducible installs. |
 | `rollup.config.js` | Frontend bundle build configuration. |
 | `tsconfig.json` | TypeScript compiler configuration. |
-| `decky_plugin.pyi` | Python typing stubs for Decky plugin runtime APIs. |
+| `decky.pyi` | Python typing stubs for the Decky backend module. |
 | `README.md` | End-user documentation and usage overview. |
 | `LICENSE` | Project license. |
 | `gh-image.jpeg` | README screenshot asset. |
@@ -189,7 +193,9 @@ The plugin applies strict response filtering so compromised or malformed provide
 | `src/utils/Stores.ts` | Static store metadata mapping used for display names/IDs. |
 | `src/utils/Deals.ts` | Pure deal normalization, alert selection, announcement de-duplication, and deals-list shaping. |
 | `src/components/DealsPage.tsx` | Full-page list of wishlist deals found by the last check; opens store pages. |
-| `src/test/decky-frontend-lib.stub.ts` | Test-only stand-in for the Steam-client-only frontend library. |
+| `src/test/decky-ui.stub.ts` | Test-only stand-in for the Steam-client-only `@decky/ui` library. |
+| `src/platform.ts` | The single adapter over Decky's runtime API (`@decky/api`): HTTP, backend calls, notifications. |
+| `tests_py/` | Backend tests: atomic settings writes, unreadable-file handling, Deckdeals migration. |
 | `src/utils/ApiParsing.ts` | Pure validation/parsing of external API payloads and store-selection inputs. |
 | `src/utils/Deals.test.ts` | Unit tests for deal normalization and notification de-duplication. |
 | `src/utils/ApiParsing.test.ts` | Unit tests for external payload validation and store-selection handling. |

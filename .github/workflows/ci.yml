@@ -46,15 +46,14 @@ jobs:
             echo "::error file=plugin.json::version mismatch: package.json=$PKG, plugin.json=$PLG"
             exit 1
           fi
-
-      # Must report errors in src/ paths. If @types/node drifts ahead of what
-      # TypeScript 4.7 can parse, tsc aborts inside node_modules and silently
-      # checks nothing - which is how a real bug reached a release once.
       - name: Type check
         run: pnpm typecheck
 
       - name: Test
         run: pnpm test
+
+      - name: Test backend
+        run: python3 -m unittest discover -s tests_py -v
 
       - name: Package plugin
         run: pnpm run archive

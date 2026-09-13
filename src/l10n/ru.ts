@@ -110,6 +110,7 @@ export const ru: Record<string, string> = {
     "settings.wishlist.viewDeals.label": "Открыть список скидок",
     "settings.wishlist.status.reset": "История оповещений очищена. Запустите проверку, чтобы снова увидеть все текущие скидки.",
     "settings.wishlist.status.seeded": "Текущие скидки записаны как отправная точка. Вы получите уведомление, когда начнутся новые.",
+    "settings.wishlist.status.limited": "Проверены только первые {checked} из {total} игр списка желаемого.",
     "settings.wishlist.error.noSteamId": "Не удалось определить вашу учётную запись Steam. Попробуйте снова, когда Steam завершит вход.",
     "settings.wishlist.error.private": "Ваш список желаемого в Steam скрыт. Сделайте его публичным в настройках приватности Steam, чтобы включить оповещения.",
     "settings.wishlist.error.generic": "Не удалось проверить список желаемого. Повторим автоматически.",

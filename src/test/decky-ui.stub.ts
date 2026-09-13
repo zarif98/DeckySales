@@ -1,5 +1,5 @@
 /*
- * Test-only stand-in for decky-frontend-lib.
+ * Test-only stand-in for @decky/ui.
  *
  * The real module reaches into Steam's webpack internals at import time and
  * cannot load outside the Steam client. Vitest aliases the package to this

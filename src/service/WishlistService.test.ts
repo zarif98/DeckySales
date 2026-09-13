@@ -150,7 +150,7 @@ async function boot(world: WorldState) {
     const { providerAuthService } = await import("./ProviderAuthService");
     const { priceService } = await import("./PriceService");
     const { wishlistService } = await import("./WishlistService");
-    const decky = await import("decky-frontend-lib") as any;
+    const decky = await import("@decky/ui") as any;
     decky.resetNavCalls();
 
     Cache.init();
@@ -522,5 +522,28 @@ describe("resilience to a price-provider outage", () => {
         await wishlistService.check();
 
         expect(toasts).toHaveLength(1);
+    });
+});
+
+describe("wishlists larger than the check limit", () => {
+    it("tells the caller how much of the wishlist was actually checked", async () => {
+        const world = makeWorld({
+            wishlist: Array.from({ length: 501 }, (_, i) => i + 1),
+            itadIds: {},
+        });
+        const { wishlistService } = await boot(world);
+
+        const result = await wishlistService.check();
+
+        expect(result.limited).toEqual({ checked: 500, total: 501 });
+    });
+
+    it("reports no limit for a wishlist within it", async () => {
+        const world = makeWorld({ deals: { "game-bg3": [] } });
+        const { wishlistService } = await boot(world);
+
+        const result = await wishlistService.check();
+
+        expect(result.limited).toBeUndefined();
     });
 });

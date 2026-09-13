@@ -80,6 +80,24 @@ describe("parseWishlistAppIds", () => {
         expect(result.appIds).toEqual(["570", "440"]);
     });
 
+    it("reports the full count when the cap cuts a wishlist short", () => {
+        const items = Array.from({ length: 830 }, (_, i) => ({ appid: i + 1 }));
+
+        const result = parseWishlistAppIds({ response: { items } }, 500);
+
+        expect(result.appIds).toHaveLength(500);
+        expect(result.total).toBe(830);
+    });
+
+    it("does not count malformed entries towards the total", () => {
+        const result = parseWishlistAppIds(
+            { response: { items: [{ appid: 1 }, { appid: "x" }, {}, { appid: 2 }] } },
+            500
+        );
+
+        expect(result.total).toBe(2);
+    });
+
     it("caps the number of entries it will process", () => {
         const items = Array.from({ length: 600 }, (_, i) => ({ appid: i + 1 }));
 

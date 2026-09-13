@@ -29,6 +29,9 @@ Changes made in this fork, as required by section 5(a) of the GPL:
   - All stores are enabled by default rather than Steam alone.
   - Provider API keys may be supplied by the user, and the credentials
     endpoint is self-hostable, removing the dependency on a single service.
+  - Moved to Decky Loader's current plugin API (@decky/api, @decky/ui) ahead
+    of the removal of the legacy one, made settings writes atomic, and
+    import settings from an earlier Deckdeals install.
   - Added a unit and integration test suite, and corrected the licence
     metadata in package.json, which declared BSD-3-Clause while the LICENSE
     file has always been GPL-3.0.

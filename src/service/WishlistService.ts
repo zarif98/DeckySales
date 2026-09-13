@@ -1,4 +1,5 @@
-import { Navigation, ServerAPI } from "decky-frontend-lib";
+import { Navigation } from "@decky/ui";
+import type { DeckyServer as ServerAPI } from "../platform";
 import { SETTINGS, Setting } from "../utils/Settings";
 import { priceService } from "./PriceService";
 import { DEALS_ROUTE, Deal, buildRowDeals, pickWishlistDeal, planAnnouncements, storePageUrlFor } from "../utils/Deals";
@@ -153,7 +154,7 @@ class WishlistService {
         return null;
     }
 
-    public async fetchWishlistAppIds(): Promise<{ appIds: string[]; error?: string }> {
+    public async fetchWishlistAppIds(): Promise<{ appIds: string[]; total?: number; error?: string }> {
         if (!this.serverApi) return { appIds: [], error: "notReady" };
 
         const steamId = this.getSteamId();
@@ -192,7 +193,7 @@ class WishlistService {
     /**
      * Run one wishlist pass. Returns a short status the settings UI can show.
      */
-    public async check(): Promise<{ found: number; checked: number; error?: string; seeded?: boolean }> {
+    public async check(): Promise<{ found: number; checked: number; error?: string; seeded?: boolean; limited?: { checked: number; total: number } }> {
         if (this.running) return { found: 0, checked: 0, error: "busy" };
         this.running = true;
 
@@ -200,11 +201,16 @@ class WishlistService {
             const enabled = await SETTINGS.load(Setting.WISHLIST_ALERTS);
             if (!enabled) return { found: 0, checked: 0, error: "disabled" };
 
-            const { appIds, error } = await this.fetchWishlistAppIds();
+            const { appIds, total, error } = await this.fetchWishlistAppIds();
             if (error) {
                 return { found: 0, checked: 0, error };
             }
             if (appIds.length === 0) return { found: 0, checked: 0 };
+
+            // Wishlists beyond MAX_WISHLIST_APPS are checked only in part; say so.
+            const limited = total !== undefined && total > appIds.length
+                ? { checked: appIds.length, total }
+                : undefined;
 
             // Resolve ITAD ids, reusing anything already mapped this session.
             const unknownAppIds = appIds.filter(id => !this.idCache.has(id));
@@ -218,7 +224,7 @@ class WishlistService {
                 const gameId = this.idCache.get(appId);
                 if (gameId) gameIdByApp.set(appId, gameId);
             }
-            if (gameIdByApp.size === 0) return { found: 0, checked: appIds.length };
+            if (gameIdByApp.size === 0) return { found: 0, checked: appIds.length, limited };
 
             const dealsByGame = await priceService.getDealsForGameIds([...gameIdByApp.values()]);
 
@@ -227,7 +233,7 @@ class WishlistService {
             // the next successful pass would re-announce everything - and blank
             // the deals page. Leave both untouched and try again next cycle.
             if (dealsByGame.size === 0) {
-                return { found: 0, checked: gameIdByApp.size, error: "noPrices" };
+                return { found: 0, checked: gameIdByApp.size, error: "noPrices", limited };
             }
 
             const minDiscount = await this.getMinDiscount();
@@ -256,7 +262,7 @@ class WishlistService {
             await SETTINGS.save(Setting.WISHLIST_LAST_CHECK, Date.now());
             if (isFirstRun) await SETTINGS.save(Setting.WISHLIST_SEEDED, true);
 
-            return { found: announce.length, checked: gameIdByApp.size, seeded: isFirstRun };
+            return { found: announce.length, checked: gameIdByApp.size, seeded: isFirstRun, limited };
         } catch (e) {
             console.error("[DeckySales] Wishlist check failed", e);
             return { found: 0, checked: 0, error: "exception" };

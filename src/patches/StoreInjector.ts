@@ -1,4 +1,5 @@
-import { ServerAPI, findModuleChild } from "decky-frontend-lib"
+import { findModuleExport } from "@decky/ui"
+import type { DeckyServer as ServerAPI } from "../platform"
 import { CACHE } from "../utils/Cache"
 import { priceService } from "../service/PriceService"
 import { exchangeRateService } from "../service/ExchangeRateService"
@@ -47,12 +48,7 @@ type Info = {
 const History: {
     listen: (callback: (info: Info) => void) => () => void;
     location?: Info;
-} = findModuleChild((m) => {
-    if (typeof m !== 'object') return undefined
-    for (const prop in m) {
-        if (m[prop]?.m_history) return m[prop].m_history
-    }
-})
+} = findModuleExport((e: any) => !!e?.m_history)?.m_history
 
 export const injectStore = (serverApi: ServerAPI) => {
     // =========================================================================
@@ -962,7 +958,7 @@ export const injectStore = (serverApi: ServerAPI) => {
                                  var store = target.dataset.store;
                                  
                                  if (hoverInfoEl) {
-                                     hoverInfoEl.innerHTML = '<span style="color: #beee11; font-weight: bold;">' + price + '</span> ${t("store.hoverOn")} <span style="color: #8f98a0;">' + date + ' (' + store + ')</span>';
+                                     hoverInfoEl.innerHTML = '<span style="color: #beee11; font-weight: bold;">' + escapeHtml(price) + '</span> ${t("store.hoverOn")} <span style="color: #8f98a0;">' + escapeHtml(date) + ' (' + escapeHtml(store) + ')</span>';
                                      hoverInfoEl.style.color = '#fff'; // Brighten text
                                      hoverInfoEl.style.opacity = '1';
                                  }
@@ -1082,7 +1078,7 @@ export const injectStore = (serverApi: ServerAPI) => {
 
         try {
             // 1. Fetch the tabs
-            const response = await serverApi.fetchNoCors<{ body: string }>('http://localhost:8080/json');
+            const response = await serverApi.fetchNoCors('http://localhost:8080/json');
             if (!response.success) {
                 if (retries > 0 && isStoreMounted) {
                     retryTimer = setTimeout(() => connectToStoreDebugger(retries - 1), 1000);

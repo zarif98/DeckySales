@@ -102,6 +102,7 @@ export const LANG_CODE: Record<string, string> = {
     "settings.wishlist.viewDeals.label": "",
     "settings.wishlist.status.reset": "",
     "settings.wishlist.status.seeded": "",
+    "settings.wishlist.status.limited": "",
     "settings.wishlist.error.noSteamId": "",
     "settings.wishlist.error.private": "",
     "settings.wishlist.error.generic": "",
