@@ -51,6 +51,12 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # The backend tests are what stand between a release and the module
+      # shadowing that killed v1.2.3 on startup. A release that skipped them
+      # would be exactly the release that needs them.
+      - name: Test backend
+        run: python3 -m unittest discover -s tests_py
+
       - name: Package plugin
         run: pnpm run archive
 
@@ -61,6 +67,22 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           ZIP="deckysales-v${VERSION}.zip"
 
+          # A second copy under a name that never changes. GitHub serves the
+          # newest release's assets at /releases/latest/download/<name>, so a
+          # fixed name gives one permanent install URL - which is the whole
+          # point: it can be pasted into Decky's "Install Plugin from URL" and
+          # keeps working across every future release. The versioned zip stays
+          # for anyone who wants a specific build.
+          cp "$ZIP" DeckySales.zip
+
+          # This is the file people install by hand, so check it carries what
+          # the plugin needs to start. py_modules/ in particular: without it the
+          # backend cannot import its settings module and answers nothing.
+          for f in DeckySales/plugin.json DeckySales/main.py DeckySales/dist/index.js \
+                   DeckySales/py_modules/deckysales_settings.py DeckySales/LICENSE DeckySales/NOTICE; do
+            unzip -l DeckySales.zip | grep -q " $f$" || { echo "::error::missing from the install zip: $f"; exit 1; }
+          done
+
           # On a tag push the tag already exists; on a manual run derive it from
           # the manifest and let gh create it against the current commit.
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
@@ -68,13 +90,13 @@ jobs:
           else
             TAG="v${VERSION}"
           fi
-          echo "Publishing $ZIP as $TAG"
+          echo "Publishing $ZIP and DeckySales.zip as $TAG"
 
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG exists; replacing the asset."
-            gh release upload "$TAG" "$ZIP" --clobber
+            echo "Release $TAG exists; replacing the assets."
+            gh release upload "$TAG" "$ZIP" DeckySales.zip --clobber
           else
-            gh release create "$TAG" "$ZIP" \
+            gh release create "$TAG" "$ZIP" DeckySales.zip \
               --title "DeckySales $TAG" \
               --generate-notes
           fi

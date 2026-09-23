@@ -31,11 +31,27 @@ DeckySales adds a price panel to every Steam store page on your Deck, and watche
 
 ## Installation
 
-1. Download the latest `deckysales-v*.zip` from the [**Releases page**](https://github.com/zarif98/DeckySales/releases/latest).
-2. On your Steam Deck, open **Decky** → **Settings**.
-3. Enable **Developer Mode** under the General tab.
-4. Go to the **Developer** tab.
-5. Choose **Install Plugin from ZIP File** and select the downloaded file.
+DeckySales is not on the Decky store yet, so it installs by hand. Decky Loader
+must already be installed, and do this from Game Mode.
+
+### From a URL (easiest)
+
+In **Decky** → **Settings** → enable **Developer mode** (General tab) → the
+**Developer** tab → **Install Plugin from URL**, and enter:
+
+```
+https://github.com/zarif98/DeckySales/releases/latest/download/DeckySales.zip
+```
+
+That link always resolves to the newest release, so it stays current and is
+worth keeping. Nothing to download first, and no toolchain.
+
+### From a zip
+
+If you would rather have the file, download `deckysales-v*.zip` from the
+[**Releases page**](https://github.com/zarif98/DeckySales/releases/latest),
+then use **Install Plugin from ZIP File** in that same Developer tab. Every
+release carries both files: they are the same build under two names.
 
 Prefer to build it yourself? See [`FORK_AND_BUILD_ZIP.md`](./.github/DOCUMENTATION/FORK_AND_BUILD_ZIP.md).
 
@@ -125,7 +141,9 @@ To publish, bump the version in **both** `package.json` and `plugin.json`, then 
 git tag v1.3.0 && git push origin v1.3.0
 ```
 
-[`release.yml`](.github/workflows/release.yml) checks the tag matches both manifests, re-runs the type check and tests, then publishes a GitHub Release with the zip attached. CI fails if the two version fields ever disagree — the Decky store reads `plugin.json`, while the zip is named from `package.json`.
+[`release.yml`](.github/workflows/release.yml) checks the tag matches both manifests, re-runs the type check and both test suites, then publishes a GitHub Release. CI fails if the two version fields ever disagree — the Decky store reads `plugin.json`, while the zip is named from `package.json`.
+
+Each release carries the same build twice: `deckysales-v<version>.zip`, and `DeckySales.zip` under a name that never changes. GitHub serves the newest release's assets from `/releases/latest/download/<name>`, so the fixed name is what makes the install URL above permanent. Renaming it would break that link for everyone already using it.
 
 ## Security
 
