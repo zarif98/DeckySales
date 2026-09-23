@@ -20,8 +20,8 @@ _fake_decky = types.ModuleType("decky")
 _fake_decky.logger = logging.getLogger("decky-test")
 sys.modules["decky"] = _fake_decky
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from settings import SettingsManager  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "py_modules"))
+from deckysales_settings import SettingsManager  # noqa: E402
 
 
 class SettingsTests(unittest.TestCase):
@@ -75,7 +75,7 @@ class SettingsTests(unittest.TestCase):
         m = self.manager()
         m.setSetting("itadApiKey", "keep-me")
 
-        with mock.patch("settings.json.dump", side_effect=OSError("power loss")):
+        with mock.patch("deckysales_settings.json.dump", side_effect=OSError("power loss")):
             with self.assertRaises(OSError), self.assertLogs("decky-test", level="ERROR"):
                 m.setSetting("wishlistSeen", {"570": "x"})
 
@@ -85,14 +85,14 @@ class SettingsTests(unittest.TestCase):
     def test_failed_save_is_not_kept_in_memory(self):
         m = self.manager()
         m.setSetting("a", 1)
-        with mock.patch("settings.os.replace", side_effect=OSError("disk full")):
+        with mock.patch("deckysales_settings.os.replace", side_effect=OSError("disk full")):
             with self.assertRaises(OSError), self.assertLogs("decky-test", level="ERROR"):
                 m.setSetting("a", 2)
         self.assertEqual(m.getSetting("a", None), 1)
 
     def test_no_temp_files_left_behind_after_a_failed_save(self):
         m = self.manager()
-        with mock.patch("settings.os.replace", side_effect=OSError("disk full")):
+        with mock.patch("deckysales_settings.os.replace", side_effect=OSError("disk full")):
             with self.assertRaises(OSError), self.assertLogs("decky-test", level="ERROR"):
                 m.setSetting("a", 1)
         self.assertEqual([f for f in os.listdir(self.dir) if f.endswith(".tmp")], [])

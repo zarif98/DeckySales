@@ -31,7 +31,11 @@ interface FakeDeal {
 interface WorldState {
     /** When true, ITAD's price endpoint fails, as it would in an outage. */
     pricesFail?: boolean;
-    /** Steam app ids on the wishlist, or null to simulate a private wishlist. */
+    /**
+     * Steam app ids on the wishlist. An empty array is an empty wishlist, which
+     * Steam answers exactly like a private one apart from the status code; null
+     * is a private wishlist, which it refuses with a 403.
+     */
     wishlist: number[] | null;
     /** Steam app id -> ITAD game id. Missing entries mean ITAD does not know it. */
     itadIds: Record<string, string>;
@@ -57,7 +61,9 @@ function makeServerApi(world: WorldState) {
     const settingsStore: Record<string, unknown> = {};
     const requests: { url: string; body?: string }[] = [];
 
-    const json = (value: unknown) => ({ success: true, result: { body: JSON.stringify(value) } });
+    const json = (value: unknown) => ({ success: true, result: { status: 200, body: JSON.stringify(value) } });
+    /** A non-2xx, as the platform adapter reports it: success false, status kept. */
+    const httpError = (status: number) => ({ success: false, result: { status, body: "" } });
 
     const serverApi = {
         toaster: {
@@ -89,7 +95,9 @@ function makeServerApi(world: WorldState) {
 
             // Steam's wishlist API.
             if (target.hostname === "api.steampowered.com") {
-                if (world.wishlist === null) return json({ response: {} }); // private
+                if (world.wishlist === null) return httpError(403); // private
+                // Steam omits `items` entirely when the wishlist is empty.
+                if (world.wishlist.length === 0) return json({ response: {} });
                 return json({ response: { items: world.wishlist.map(appid => ({ appid })) } });
             }
 
@@ -316,6 +324,19 @@ describe("wishlist alerts, end to end", () => {
         const result = await wishlistService.check();
 
         expect(result.error).toBe("private");
+        expect(toasts).toEqual([]);
+    });
+
+    it("treats an empty wishlist as empty, not as private", async () => {
+        // Steam answers {"response":{}} for both. Telling someone with nothing
+        // wishlisted to change their privacy settings is the bug this pins.
+        const world = makeWorld({ wishlist: [] });
+        const { wishlistService, toasts } = await boot(world);
+
+        const result = await wishlistService.check();
+
+        expect(result.error).toBeUndefined();
+        expect(result.found).toBe(0);
         expect(toasts).toEqual([]);
     });
 

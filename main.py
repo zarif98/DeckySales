@@ -3,7 +3,14 @@ import shutil
 
 import decky
 
-from settings import SettingsManager
+# py_modules/, not the plugin root, is what the loader puts on sys.path, and the
+# loader also aliases its own decky_loader.settings into sys.modules as
+# "settings". A module named settings.py in the plugin root is therefore never
+# the one that gets imported - `from settings import SettingsManager` silently
+# returns Decky's own class instead. That shadowing crashed v1.2.3 on startup
+# (AttributeError: no attribute 'settings_file'), taking every backend call with
+# it. The prefixed name cannot collide; do not rename it back.
+from deckysales_settings import SettingsManager
 
 
 settings = SettingsManager(name="settings", settings_directory=decky.DECKY_PLUGIN_SETTINGS_DIR)

@@ -39,23 +39,29 @@ describe("parseWishlistAppIds", () => {
         expect(result.appIds).toEqual(["1086940", "570"]);
     });
 
-    it("distinguishes a private wishlist from an empty one", () => {
-        // These need different messages in the UI, so they must not collapse.
-        const privateList = parseWishlistAppIds({ response: {} }, 500);
-        const emptyList = parseWishlistAppIds({ response: { items: [] } }, 500);
+    it.each([
+        ["items omitted, as Steam sends for an empty wishlist", { response: {} }],
+        ["an explicit empty items array", { response: { items: [] } }],
+    ])("reads %s as an empty wishlist, not a private one", (_label, payload) => {
+        const result = parseWishlistAppIds(payload, 500);
 
-        expect(privateList).toHaveProperty("error", "private");
-        expect(emptyList).not.toHaveProperty("error");
-        expect(emptyList.appIds).toEqual([]);
+        // Steam sends {"response":{}} for an empty wishlist *and* nothing
+        // useful for a private one; only the HTTP status tells them apart, and
+        // that is not this function's to see. Reporting "private" here told
+        // everyone with an empty wishlist to change their privacy settings.
+        expect(result).not.toHaveProperty("error");
+        expect(result.appIds).toEqual([]);
+        expect(result.total).toBe(0);
     });
 
     it.each([
         ["a null payload", null],
         ["a string payload", "nope"],
         ["a missing response envelope", {}],
+        ["a response that is an array", { response: [] }],
         ["items that are not an array", { response: { items: "nope" } }],
-    ])("reports %s as private rather than throwing", (_label, payload) => {
-        expect(parseWishlistAppIds(payload, 500)).toHaveProperty("error", "private");
+    ])("reports %s as a bad response rather than throwing", (_label, payload) => {
+        expect(parseWishlistAppIds(payload, 500)).toHaveProperty("error", "badResponse");
     });
 
     it("skips malformed entries without discarding the good ones", () => {

@@ -63,12 +63,22 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           ZIP="deckysales-v${VERSION}.zip"
           unzip -o -q "$ZIP" -d _verify
-          for f in DeckySales/dist/index.js DeckySales/main.py DeckySales/plugin.json DeckySales/LICENSE DeckySales/NOTICE; do
+          for f in DeckySales/dist/index.js DeckySales/main.py DeckySales/plugin.json DeckySales/LICENSE DeckySales/NOTICE DeckySales/py_modules/deckysales_settings.py; do
             if [ ! -f "_verify/$f" ]; then
               echo "::error::missing from package: $f"
               exit 1
             fi
           done
+          # The loader puts py_modules/ on sys.path, never the plugin root, and
+          # it aliases its own modules into sys.modules under bare names like
+          # "settings". A library module in the plugin root is therefore either
+          # unimportable or silently shadowed by Decky's own - which is what
+          # broke v1.2.3. Keep them in py_modules/ with a prefixed name.
+          if ls _verify/DeckySales/*.py 2>/dev/null | grep -qv '/main\.py$'; then
+            echo "::error::python module in the plugin root; it belongs in py_modules/"
+            ls _verify/DeckySales/*.py
+            exit 1
+          fi
           if grep -q "vitest" _verify/DeckySales/dist/index.js; then
             echo "::error::test code leaked into the bundle"
             exit 1
@@ -125,7 +135,7 @@ jobs:
           echo "plugin.json name=$NAME  package.json version=$VERSION"
           [ "$NAME" = "DeckySales" ] || { echo "::error::plugin.json name is '$NAME'"; exit 1; }
           # NOTICE ships via defaults/, which the CLI copies into the plugin root.
-          for f in DeckySales/dist/index.js DeckySales/plugin.json DeckySales/package.json DeckySales/main.py DeckySales/NOTICE; do
+          for f in DeckySales/dist/index.js DeckySales/plugin.json DeckySales/package.json DeckySales/main.py DeckySales/NOTICE DeckySales/py_modules/deckysales_settings.py; do
             unzip -l "$ZIP" | grep -q " $f$" || { echo "::error::missing from store build: $f"; exit 1; }
           done
           if ! unzip -l "$ZIP" | grep -qE " DeckySales/LICENSE(\.md)?$"; then

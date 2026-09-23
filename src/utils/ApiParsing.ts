@@ -14,19 +14,29 @@ export function isValidSteamId64(value: unknown): value is string {
 
 export type WishlistParseResult =
     | { appIds: string[]; total: number }
-    | { appIds: []; total: 0; error: "private" };
+    | { appIds: []; total: 0; error: "badResponse" };
 
 /**
  * Extract wishlist app ids from Steam's wishlist API payload.
  *
- * A missing or non-array `response.items` is reported as "private" rather than
- * as an empty wishlist: those two cases need different messages in the UI, and
- * conflating them would tell a user with a private wishlist that they simply
- * have no games on it.
+ * Steam omits `items` entirely for an empty wishlist, answering `{"response":{}}`,
+ * so an absent `items` is an empty wishlist and nothing more. Treating it as a
+ * private wishlist told everyone with nothing wishlisted to go change their
+ * privacy settings. A private wishlist is distinguished by HTTP status, which
+ * this function does not see - see WishlistService.fetchWishlistAppIds.
+ *
+ * `items` present but not an array means the payload is not the shape Steam
+ * documents, which is a different failure again and is reported as such.
  */
 export function parseWishlistAppIds(payload: unknown, maxApps: number): WishlistParseResult {
-    const items = (payload as any)?.response?.items;
-    if (!Array.isArray(items)) return { appIds: [], total: 0, error: "private" };
+    const response = (payload as any)?.response;
+    if (!response || typeof response !== "object" || Array.isArray(response)) {
+        return { appIds: [], total: 0, error: "badResponse" };
+    }
+
+    const items = response.items;
+    if (items === undefined || items === null) return { appIds: [], total: 0 };
+    if (!Array.isArray(items)) return { appIds: [], total: 0, error: "badResponse" };
 
     // `total` counts every valid entry, so a caller can tell the user when the
     // cap cut their wishlist short instead of silently checking part of it.

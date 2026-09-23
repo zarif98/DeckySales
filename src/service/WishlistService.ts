@@ -14,7 +14,8 @@ import { t } from "../l10n";
  *
  * Flow:
  * 1) Resolve the signed-in SteamID64 from the Steam client frontend.
- * 2) Pull the wishlist app ids from Steam's public wishlist API.
+ * 2) Pull the wishlist app ids from Steam's public wishlist API (a private
+ *    wishlist is reported as such from the HTTP status, not the body).
  * 3) Bulk-resolve those app ids to ITAD game ids (cached in memory).
  * 4) Ask ITAD for live prices across every store the user selected.
  * 5) Toast anything at or above the configured discount that we have not
@@ -146,6 +147,14 @@ class WishlistService {
         }
     }
 
+    /** HTTP status from the platform's fetch result, when it reported one. */
+    private parseStatus(result: unknown): number | null {
+        if (result && typeof result === "object" && typeof (result as any).status === "number") {
+            return (result as any).status;
+        }
+        return null;
+    }
+
     private parseBodyString(result: unknown): string | null {
         if (result && typeof result === "object" && "body" in result && typeof (result as any).body === "string") {
             return (result as any).body;
@@ -165,6 +174,14 @@ class WishlistService {
 
         try {
             const res = await this.serverApi.fetchNoCors(url, { method: "GET" });
+
+            // Steam refuses a wishlist it will not show us with a 401 or 403.
+            // That is the only reliable signal that a wishlist is private: the
+            // body for a private wishlist and for an empty one are the same.
+            // Checked before res.success, which is false for any non-2xx.
+            const status = this.parseStatus(res.result);
+            if (status === 401 || status === 403) return { appIds: [], error: "private" };
+
             if (!res.success) return { appIds: [], error: "fetchFailed" };
 
             const body = this.parseBodyString(res.result);

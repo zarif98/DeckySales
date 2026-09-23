@@ -15,18 +15,60 @@ import types
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PY_MODULES = os.path.join(ROOT, "py_modules")
+
+
+class DeckyOwnSettingsManager:
+    """
+    Stand-in for decky_loader's own SettingsManager.
+
+    The loader aliases its internal modules into sys.modules, so an unqualified
+    `import settings` from a plugin resolves to Decky's class, not the plugin's.
+    That shadowing is what crashed v1.2.3: this class has no settings_file and
+    no ensure_loaded, so if main.py ever imports the bare name again, every test
+    in this file fails with the same AttributeError the users saw.
+    """
+
+    def __init__(self, name, settings_directory=None):
+        self.path = os.path.join(settings_directory or "", f"{name}.json")
+        self.settings = {}
+
+    def read(self):
+        pass
+
+    def commit(self):
+        pass
+
+    def getSetting(self, key, default=None):
+        return self.settings.get(key, default)
+
+    def setSetting(self, key, value):
+        self.settings[key] = value
+        return value
 
 
 def load_plugin(decky_home):
-    """Import main.py fresh against a fake Decky home directory."""
+    """
+    Import main.py fresh against a fake Decky home directory.
+
+    The import environment mirrors the real loader: py_modules/ is importable,
+    the plugin root is not a source of library modules, and sys.modules already
+    holds Decky's own "settings" module.
+    """
     fake = types.ModuleType("decky")
     fake.logger = logging.getLogger("decky-test")
     fake.DECKY_HOME = decky_home
     fake.DECKY_PLUGIN_SETTINGS_DIR = os.path.join(decky_home, "settings", "DeckySales")
     sys.modules["decky"] = fake
-    if ROOT not in sys.path:
-        sys.path.insert(0, ROOT)
-    for name in ("main", "settings"):
+
+    decoy = types.ModuleType("settings")
+    decoy.SettingsManager = DeckyOwnSettingsManager
+    sys.modules["settings"] = decoy
+
+    for path in (PY_MODULES, ROOT):
+        if path not in sys.path:
+            sys.path.insert(0, path)
+    for name in ("main", "deckysales_settings"):
         sys.modules.pop(name, None)
     return importlib.import_module("main")
 
@@ -82,6 +124,27 @@ class MigrationTests(unittest.TestCase):
         run(plugin._migration())
 
         self.assertFalse(os.path.exists(self.current))
+        self.assertEqual(run(plugin.settings_load("stores", "default")), "default")
+
+    def test_uses_the_plugins_own_settings_manager_not_deckys(self):
+        # Decky's class is in sys.modules under the name "settings"; importing
+        # main must not pick it up. See DeckyOwnSettingsManager.
+        main = load_plugin(self.home)
+
+        self.assertIsNot(main.SettingsManager, DeckyOwnSettingsManager)
+        self.assertEqual(main.SettingsManager.__module__, "deckysales_settings")
+        self.assertTrue(hasattr(main.settings, "settings_file"))
+        self.assertTrue(hasattr(main.settings, "ensure_loaded"))
+
+    def test_startup_sequence_runs_clean(self):
+        # _migration then _main is the order the loader calls them in, and it is
+        # where v1.2.3 raised before the backend could answer a single call.
+        main = load_plugin(self.home)
+        plugin = main.Plugin()
+
+        run(plugin._migration())
+        run(plugin._main())
+
         self.assertEqual(run(plugin.settings_load("stores", "default")), "default")
 
     def test_save_and_load_through_the_plugin_methods(self):
