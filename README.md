@@ -67,7 +67,7 @@ Prefer to build it yourself? See [`FORK_AND_BUILD_ZIP.md`](./.github/DOCUMENTATI
 
 ## Wishlist alerts
 
-Your wishlist is read from Steam's public wishlist API using the SteamID of the signed-in account, so your **Steam wishlist must be public** — Steam Profile → Privacy Settings → *Game details*. The plugin says so explicitly if it isn't.
+Your wishlist is read from the Steam client's own signed-in store session, so it works **whatever your privacy settings are**. If that is ever unavailable, the plugin falls back to Steam's public wishlist API, which only sees the wishlist when *Game details* is public (Steam Profile → Privacy Settings). Steam answers that API identically for an empty wishlist and a hidden one, so if nothing is found the plugin says so and points at that setting rather than guessing which it is.
 
 **When you get told**
 
@@ -98,9 +98,12 @@ Your wishlist is read from Steam's public wishlist API using the SteamID of the 
 | **Credentials endpoint** (`deckysales-credentials.zarif98.workers.dev`) | Supplies the shared IsThereAnyDeal key. A free Cloudflare Worker run by this project; self-hostable — see [`server/`](./server/README.md). Never contacted if you supply your own key. | An `X-App-ID` header |
 | **IsThereAnyDeal** | Current prices, historic lows, graph data | App ID, country code, store IDs |
 | **[Free Currency Exchange Rates API](https://github.com/fawazahmed0/exchange-api)** (via jsDelivr, Cloudflare mirror as fallback) | Daily rates for cross-currency comparison. No key, no account | Target currency code |
-| **Steam Web API** | Reads your public wishlist, only when alerts are enabled | Your SteamID64 |
+| **Steam store** (`store.steampowered.com/dynamicstore/userdata`) | Reads your wishlist from your signed-in session, only when alerts are enabled | Nothing beyond the session the Steam client already sends |
+| **Steam Web API** | Fallback wishlist read if the above is unavailable | Your SteamID64 |
 
-All requests are made from your Deck through Decky's network layer. Your Steam account, library and inventory are never accessed.
+All requests are made from your Deck. The store-session read goes through the Steam client itself, since only it holds the session; everything else goes through Decky's network layer. The plugin never reads, stores or sends your Steam session or any credential.
+
+That store response is Steam's general per-user store data, so alongside the wishlist it also contains things like the games you own. The plugin reads only the wishlist from it and discards the rest in memory. The only thing that leaves your Deck as a result is the wishlist's app IDs, sent to IsThereAnyDeal for prices.
 
 **On wishlist data specifically:** your SteamID goes only to Steam's own API. To price your wishlist, the Steam app IDs of the games on it are sent to IsThereAnyDeal — that is the only wishlist-derived data that leaves your device, and nothing about your wishlist is sent anywhere else.
 

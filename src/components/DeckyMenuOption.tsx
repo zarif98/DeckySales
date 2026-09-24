@@ -59,7 +59,7 @@ const DeckyMenuOption = () => {
 
   const wishlistErrorText = (error: string) => {
     if (error === 'noSteamId') return t("settings.wishlist.error.noSteamId");
-    if (error === 'private') return t("settings.wishlist.error.private");
+    if (error === 'emptyWishlist') return t("settings.wishlist.error.emptyWishlist");
     if (error === 'noPrices') return t("settings.wishlist.status.noPrices");
     return t("settings.wishlist.error.generic");
   };

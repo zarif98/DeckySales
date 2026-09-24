@@ -32,11 +32,15 @@ interface WorldState {
     /** When true, ITAD's price endpoint fails, as it would in an outage. */
     pricesFail?: boolean;
     /**
-     * Steam app ids on the wishlist. An empty array is an empty wishlist, which
-     * Steam answers exactly like a private one apart from the status code; null
-     * is a private wishlist, which it refuses with a 403.
+     * Steam app ids on the wishlist. null means the public API shows nothing -
+     * which Steam returns identically for an empty wishlist and a private one.
      */
     wishlist: number[] | null;
+    /**
+     * What the in-client dynamicstore route returns, or undefined when that
+     * route is unavailable and the service must fall back to the public API.
+     */
+    clientWishlist?: number[];
     /** Steam app id -> ITAD game id. Missing entries mean ITAD does not know it. */
     itadIds: Record<string, string>;
     /** ITAD game id -> the offers live right now. */
@@ -62,8 +66,6 @@ function makeServerApi(world: WorldState) {
     const requests: { url: string; body?: string }[] = [];
 
     const json = (value: unknown) => ({ success: true, result: { status: 200, body: JSON.stringify(value) } });
-    /** A non-2xx, as the platform adapter reports it: success false, status kept. */
-    const httpError = (status: number) => ({ success: false, result: { status, body: "" } });
 
     const serverApi = {
         toaster: {
@@ -95,9 +97,9 @@ function makeServerApi(world: WorldState) {
 
             // Steam's wishlist API.
             if (target.hostname === "api.steampowered.com") {
-                if (world.wishlist === null) return httpError(403); // private
-                // Steam omits `items` entirely when the wishlist is empty.
-                if (world.wishlist.length === 0) return json({ response: {} });
+                // Steam answers 200 {"response":{}} for an empty wishlist AND
+                // for a private one - the two are indistinguishable here.
+                if (world.wishlist === null || world.wishlist.length === 0) return json({ response: {} });
                 return json({ response: { items: world.wishlist.map(appid => ({ appid })) } });
             }
 
@@ -166,6 +168,26 @@ async function boot(world: WorldState) {
     providerAuthService.init(api);
     priceService.init(api);
     wishlistService.init(api);
+
+    // The in-client route goes through the page's own fetch, not the platform
+    // adapter, because only the page carries the Steam store session. Leaving
+    // pageFetch undefined is how a world says that route is unavailable, which
+    // is what forces the fall back to the public API.
+    wishlistService.pageFetch = world.clientWishlist === undefined
+        // Route unavailable. Explicitly stubbed rather than left undefined:
+        // undefined would fall through to the real global fetch and put these
+        // tests on the network.
+        ? (async () => { throw new Error("dynamicstore unavailable in this world"); }) as any
+        : (async (_url: any, init: any) => {
+            // The session is what makes this route work at all; a request
+            // without it would be answered as an anonymous one.
+            expect(init?.credentials).toBe("include");
+            return {
+                ok: true,
+                status: 200,
+                text: async () => JSON.stringify({ rgWishlist: world.clientWishlist }),
+            };
+        }) as any;
 
     return { ...harness, wishlistService, settingsModule, Setting, navCalls: decky.navCalls };
 }
@@ -317,27 +339,55 @@ describe("wishlist alerts, end to end", () => {
         expect(toasts).toHaveLength(2);
     });
 
-    it("reports a private wishlist instead of silently finding nothing", async () => {
-        const world = makeWorld({ wishlist: null, deals: { "game-bg3": [deal()] } });
-        const { wishlistService, toasts } = await boot(world);
-
-        const result = await wishlistService.check();
-
-        expect(result.error).toBe("private");
-        expect(toasts).toEqual([]);
-    });
-
-    it("treats an empty wishlist as empty, not as private", async () => {
-        // Steam answers {"response":{}} for both. Telling someone with nothing
-        // wishlisted to change their privacy settings is the bug this pins.
-        const world = makeWorld({ wishlist: [] });
-        const { wishlistService, toasts } = await boot(world);
+    it("reads the wishlist from the Steam client session when it is available", async () => {
+        // The public API returns nothing - a private wishlist, as far as it is
+        // concerned. The in-client route still sees the games, which is the
+        // whole reason it is preferred.
+        const world = makeWorld({
+            wishlist: null,
+            clientWishlist: [1086940],
+            deals: { "game-bg3": [deal()] },
+        });
+        const { wishlistService, requests } = await boot(world);
 
         const result = await wishlistService.check();
 
         expect(result.error).toBeUndefined();
-        expect(result.found).toBe(0);
-        expect(toasts).toEqual([]);
+        expect(result.checked).toBe(1);
+        // The public API, which shows nothing for this account, is not consulted.
+        expect(requests.some(r => r.url.includes("IWishlistService"))).toBe(false);
+    });
+
+    it("falls back to the public API when the client route is unavailable", async () => {
+        const world = makeWorld({ wishlist: [1086940], deals: { "game-bg3": [deal()] } });
+        const { wishlistService, requests } = await boot(world);
+
+        const result = await wishlistService.check();
+
+        expect(result.checked).toBe(1);
+        expect(requests.some(r => r.url.includes("IWishlistService"))).toBe(true);
+    });
+
+    it("does not report an empty wishlist when the client route returns none", async () => {
+        // Steam cannot tell us whether this is empty or private, so the one
+        // message has to cover both. What it must not do is look like success.
+        const world = makeWorld({ wishlist: null, clientWishlist: [] });
+        const { wishlistService } = await boot(world);
+
+        const result = await wishlistService.check();
+
+        expect(result.error).toBe("emptyWishlist");
+    });
+
+    it("records the time of a check that found nothing", async () => {
+        // Returning early left the panel saying "Not checked yet" immediately
+        // after a check that had in fact just run.
+        const world = makeWorld({ wishlist: [] });
+        const { wishlistService, settingsStore } = await boot(world);
+
+        await wishlistService.check();
+
+        expect(Number(settingsStore["wishlistLastCheck"])).toBeGreaterThan(0);
     });
 
     it("reports a missing SteamID rather than calling Steam with a bad id", async () => {

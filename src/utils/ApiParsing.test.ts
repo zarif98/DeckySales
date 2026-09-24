@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+    parseDynamicStoreWishlist,
     buildShopsParam,
     isValidAppId,
     isValidCountry,
@@ -268,5 +269,56 @@ describe("isValidCurrencyCode", () => {
 
     it.each(["usd", "US", "USDT", "", "U5D"])("rejects %j", (code) => {
         expect(isValidCurrencyCode(code)).toBe(false);
+    });
+});
+
+describe("parseDynamicStoreWishlist", () => {
+    it("reads the flat array of app ids Steam returns", () => {
+        const result = parseDynamicStoreWishlist({ rgWishlist: [1086940, 570] }, 500);
+
+        expect(result).toEqual({ appIds: ["1086940", "570"], total: 2 });
+    });
+
+    it("reads an empty wishlist as empty, not as unknown", () => {
+        // A real, known-empty answer - not a reason to fall back.
+        expect(parseDynamicStoreWishlist({ rgWishlist: [] }, 500)).toEqual({ appIds: [], total: 0 });
+    });
+
+    it("ignores everything else in the payload", () => {
+        // The same response carries owned games and more. Only the wishlist
+        // may come out of this function.
+        const result = parseDynamicStoreWishlist(
+            { rgWishlist: [570], rgOwnedApps: [10, 20, 30], rgIgnoredApps: { "40": 0 } },
+            500
+        );
+
+        expect(result).toEqual({ appIds: ["570"], total: 1 });
+    });
+
+    it("accepts numeric strings but drops anything that is not an app id", () => {
+        const result = parseDynamicStoreWishlist(
+            { rgWishlist: [570, "730", "abc", -1, 0, 1.5, null, {}] },
+            500
+        );
+
+        expect(result?.appIds).toEqual(["570", "730"]);
+        expect(result?.total).toBe(2);
+    });
+
+    it("caps what it returns but still counts the whole wishlist", () => {
+        const rgWishlist = Array.from({ length: 632 }, (_, i) => i + 1);
+
+        const result = parseDynamicStoreWishlist({ rgWishlist }, 500);
+
+        expect(result?.appIds).toHaveLength(500);
+        expect(result?.total).toBe(632);
+    });
+
+    it.each([
+        ["a null payload", null],
+        ["a signed-out answer with no wishlist field", { rgOwnedApps: [] }],
+        ["a wishlist that is not an array", { rgWishlist: "nope" }],
+    ])("returns null for %s so the caller falls back", (_label, payload) => {
+        expect(parseDynamicStoreWishlist(payload, 500)).toBeNull();
     });
 });

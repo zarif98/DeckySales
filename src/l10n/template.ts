@@ -104,7 +104,7 @@ export const LANG_CODE: Record<string, string> = {
     "settings.wishlist.status.seeded": "",
     "settings.wishlist.status.limited": "",
     "settings.wishlist.error.noSteamId": "",
-    "settings.wishlist.error.private": "",
+    "settings.wishlist.error.emptyWishlist": "",
     "settings.wishlist.error.generic": "",
     "settings.wishlist.privacyNote": "",
 

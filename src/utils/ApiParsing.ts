@@ -53,6 +53,36 @@ export function parseWishlistAppIds(payload: unknown, maxApps: number): Wishlist
 }
 
 /**
+ * Extract wishlist app ids from the Steam client's own dynamicstore payload.
+ *
+ * `rgWishlist` is a flat array of numeric app ids, and it reflects the
+ * signed-in session rather than what the account publishes, so it is returned
+ * whatever the profile's "Game details" privacy setting is. That is why this is
+ * the preferred source - see WishlistService.
+ *
+ * Returns null when the payload is not the expected shape, so the caller can
+ * tell "Steam did not answer in the form we know" apart from "the wishlist is
+ * genuinely empty", and fall back rather than reporting an empty wishlist.
+ */
+export function parseDynamicStoreWishlist(payload: unknown, maxApps: number): WishlistParseResult | null {
+    const wishlist = (payload as any)?.rgWishlist;
+    if (!Array.isArray(wishlist)) return null;
+
+    const appIds: string[] = [];
+    let total = 0;
+    for (const entry of wishlist) {
+        // Ids arrive as numbers, but tolerate the numeric strings Steam
+        // sometimes uses elsewhere in the same payload.
+        const appId = typeof entry === "string" && /^\d+$/.test(entry) ? Number(entry) : entry;
+        if (!Number.isInteger(appId) || appId <= 0) continue;
+        total++;
+        if (appIds.length < maxApps) appIds.push(String(appId));
+    }
+
+    return { appIds, total };
+}
+
+/**
  * Parse ITAD's bulk id lookup response, which is keyed by the shop-scoped id we
  * sent ("app/1086940") and valued with the ITAD game id. Keys come back to us
  * as plain Steam app ids so callers can match them against the wishlist.

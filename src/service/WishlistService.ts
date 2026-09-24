@@ -3,7 +3,7 @@ import type { DeckyServer as ServerAPI } from "../platform";
 import { SETTINGS, Setting } from "../utils/Settings";
 import { priceService } from "./PriceService";
 import { DEALS_ROUTE, Deal, buildRowDeals, pickWishlistDeal, planAnnouncements, storePageUrlFor } from "../utils/Deals";
-import { isValidSteamId64, parseWishlistAppIds } from "../utils/ApiParsing";
+import { isValidSteamId64, parseDynamicStoreWishlist, parseWishlistAppIds } from "../utils/ApiParsing";
 import { t } from "../l10n";
 
 /*
@@ -14,15 +14,16 @@ import { t } from "../l10n";
  *
  * Flow:
  * 1) Resolve the signed-in SteamID64 from the Steam client frontend.
- * 2) Pull the wishlist app ids from Steam's public wishlist API (a private
- *    wishlist is reported as such from the HTTP status, not the body).
+ * 2) Read the wishlist from the Steam client's own session, falling back to
+ *    the public API. See fetchWishlistAppIds for why that order matters.
  * 3) Bulk-resolve those app ids to ITAD game ids (cached in memory).
  * 4) Ask ITAD for live prices across every store the user selected.
  * 5) Toast anything at or above the configured discount that we have not
  *    already announced at that exact price.
  *
  * Security model:
- * - Only two hosts are contacted: Steam's public API and ITAD (via PriceService).
+ * - Hosts contacted: the Steam store (the user's own session, wishlist only),
+ *   Steam's public API as a fallback, and ITAD (via PriceService).
  * - The SteamID is read locally and validated as a 17-digit number.
  * - Response payloads are size-bounded and strictly shape-checked.
  * - Every failure path is non-fatal; the watcher simply retries next cycle.
@@ -43,6 +44,12 @@ class WishlistService {
     private running = false;
     /** Bumped on every start/stop so a delayed first pass cannot re-arm a stopped watcher. */
     private generation = 0;
+    /**
+     * The Steam client's own store session endpoint. Injectable fetch so the
+     * tests can drive this route without a browser.
+     */
+    private readonly DYNAMIC_STORE_URL = "https://store.steampowered.com/dynamicstore/userdata/";
+    public pageFetch: typeof fetch | undefined;
     private readonly WISHLIST_HOST = "api.steampowered.com";
     private readonly WISHLIST_PATH = "/IWishlistService/GetWishlist/v1/";
     private readonly MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
@@ -147,14 +154,6 @@ class WishlistService {
         }
     }
 
-    /** HTTP status from the platform's fetch result, when it reported one. */
-    private parseStatus(result: unknown): number | null {
-        if (result && typeof result === "object" && typeof (result as any).status === "number") {
-            return (result as any).status;
-        }
-        return null;
-    }
-
     private parseBodyString(result: unknown): string | null {
         if (result && typeof result === "object" && "body" in result && typeof (result as any).body === "string") {
             return (result as any).body;
@@ -163,8 +162,51 @@ class WishlistService {
         return null;
     }
 
+    /**
+     * Read the wishlist from the Steam client's own store session.
+     *
+     * This is the preferred source. It reflects who is signed in rather than
+     * what the account publishes, so it works whatever the profile's "Game
+     * details" privacy setting is - which the public API does not: that
+     * endpoint answers 200 with `{"response":{}}` for a private wishlist and
+     * for an empty one alike, so a user with games but restricted game details
+     * is indistinguishable from one with nothing wishlisted.
+     *
+     * It must go through the page's own fetch rather than the platform's: the
+     * plugin frontend runs inside the Steam client, where the request carries
+     * the existing store session. The backend proxy has no such session, so
+     * routing this through it would return someone else's view - nobody's.
+     *
+     * Returns null if this route is unavailable or the payload is unfamiliar,
+     * so the caller falls back rather than reporting an empty wishlist.
+     */
+    private async fetchWishlistFromClient(): Promise<{ appIds: string[]; total: number } | null> {
+        const pageFetch = this.pageFetch ?? (typeof fetch === "function" ? fetch : undefined);
+        if (!pageFetch) return null;
+
+        try {
+            const response = await pageFetch(this.DYNAMIC_STORE_URL, {
+                method: "GET",
+                credentials: "include",
+            });
+            if (!response || !response.ok) return null;
+
+            const body = await response.text();
+            if (!body || body.length > this.MAX_RESPONSE_BYTES) return null;
+
+            const parsed = parseDynamicStoreWishlist(JSON.parse(body), this.MAX_WISHLIST_APPS);
+            return parsed && !("error" in parsed) ? parsed : null;
+        } catch (e) {
+            console.error("[DeckySales] In-client wishlist read failed; falling back", e);
+            return null;
+        }
+    }
+
     public async fetchWishlistAppIds(): Promise<{ appIds: string[]; total?: number; error?: string }> {
         if (!this.serverApi) return { appIds: [], error: "notReady" };
+
+        const fromClient = await this.fetchWishlistFromClient();
+        if (fromClient) return fromClient;
 
         const steamId = this.getSteamId();
         if (!steamId) return { appIds: [], error: "noSteamId" };
@@ -174,14 +216,6 @@ class WishlistService {
 
         try {
             const res = await this.serverApi.fetchNoCors(url, { method: "GET" });
-
-            // Steam refuses a wishlist it will not show us with a 401 or 403.
-            // That is the only reliable signal that a wishlist is private: the
-            // body for a private wishlist and for an empty one are the same.
-            // Checked before res.success, which is false for any non-2xx.
-            const status = this.parseStatus(res.result);
-            if (status === 401 || status === 403) return { appIds: [], error: "private" };
-
             if (!res.success) return { appIds: [], error: "fetchFailed" };
 
             const body = this.parseBodyString(res.result);
@@ -222,7 +256,13 @@ class WishlistService {
             if (error) {
                 return { found: 0, checked: 0, error };
             }
-            if (appIds.length === 0) return { found: 0, checked: 0 };
+            if (appIds.length === 0) {
+                // A check that reached Steam and found nothing did run, so
+                // record it. Returning early here left the panel saying "Not
+                // checked yet" straight after a completed check.
+                await SETTINGS.save(Setting.WISHLIST_LAST_CHECK, Date.now());
+                return { found: 0, checked: 0, error: "emptyWishlist" };
+            }
 
             // Wishlists beyond MAX_WISHLIST_APPS are checked only in part; say so.
             const limited = total !== undefined && total > appIds.length
