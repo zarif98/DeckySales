@@ -1,4 +1,4 @@
-import type { DeckyServer as ServerAPI } from "../platform";
+import { fetchNoCors } from "@decky/api";
 import { SETTINGS, Setting } from "../utils/Settings";
 
 /*
@@ -37,7 +37,6 @@ class ProviderAuthService {
     // PART 1: Service State + Security Constants
     // Purpose: Define cache, endpoint, and strict validation limits.
     // =========================================================================
-    private serverApi: ServerAPI | undefined;
     private credentials: Credentials | null = null;
     private readonly ENDPOINT = CREDENTIALS_ENDPOINT;
     private readonly CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours
@@ -51,13 +50,6 @@ class ProviderAuthService {
     private readonly API_KEY_PATTERN = /^[A-Za-z0-9._-]{16,256}$/;
     private lastFetchTime: number = 0;
 
-    // =========================================================================
-    // PART 2: Public Bootstrap
-    // Purpose: Inject Decky's ServerAPI dependency once at startup.
-    // =========================================================================
-    public init(serverApi: ServerAPI) {
-        this.serverApi = serverApi;
-    }
 
     // =========================================================================
     // PART 3: Endpoint Trust Boundary Validation
@@ -85,16 +77,6 @@ class ProviderAuthService {
     // =========================================================================
     private isSafeApiKey(value: unknown): value is string {
         return typeof value === "string" && this.API_KEY_PATTERN.test(value);
-    }
-
-    private parseResponseBody(result: unknown): string | null {
-        if (result && typeof result === "object" && "body" in result && typeof (result as any).body === "string") {
-            return (result as any).body;
-        }
-        if (typeof result === "string") {
-            return result;
-        }
-        return null;
     }
 
     // =========================================================================
@@ -129,7 +111,6 @@ class ProviderAuthService {
     // Security: Fails closed and returns prior cache on any validation/network error.
     // =========================================================================
     private async fetchCredentials(): Promise<Credentials | null> {
-        if (!this.serverApi) return null;
         if (!this.isValidEndpoint()) {
             console.error("[DeckySales] Invalid credentials endpoint configuration.");
             return this.credentials;
@@ -142,7 +123,7 @@ class ProviderAuthService {
 
         try {
             console.log("[DeckySales] Fetching remote credentials...");
-            const response = await this.serverApi.fetchNoCors(this.ENDPOINT, {
+            const response = await fetchNoCors(this.ENDPOINT, {
                 method: "GET",
                 headers: {
                     "X-App-ID": "DeckySales",
@@ -150,12 +131,12 @@ class ProviderAuthService {
                 }
             });
 
-            if (!response.success) {
+            if (!response.ok) {
                 console.error("[DeckySales] Failed to fetch credentials.");
                 return this.credentials; // Return cached even if stale if fetch fails
             }
 
-            const body = this.parseResponseBody(response.result);
+            const body = await response.text();
             if (!body || body.length > this.MAX_RESPONSE_BYTES) {
                 console.error("[DeckySales] Credentials payload missing or too large.");
                 return this.credentials;

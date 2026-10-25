@@ -126,7 +126,7 @@ pnpm run archive  # build an installable zip
 Tests cover two layers:
 
 - **Pure logic** (`src/utils`) — deal normalization, which offer triggers an alert, notification de-duplication and first-run seeding, deals-list ordering, and validation of everything arriving from an external API.
-- **The wishlist flow end to end** (`src/service/WishlistService.test.ts`) — driven through a fake `ServerAPI`, so a sale can be made to start, deepen, lapse and return and the resulting notification asserted, without waiting for a real sale.
+- **The wishlist flow end to end** (`src/service/WishlistService.test.ts`) — driven through a stubbed `@decky/api`, so a sale can be made to start, deepen, lapse and return and the resulting notification asserted, without waiting for a real sale.
 
 `@decky/ui` cannot load outside the Steam client, so vitest aliases it to a stub in `src/test/` that records navigation calls. The Python backend's settings storage and Deckdeals migration are tested with `python3 -m unittest discover -s tests_py`. Only the Steam store DOM injection and on-screen rendering need real hardware.
 

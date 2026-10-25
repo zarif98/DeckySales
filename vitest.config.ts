@@ -15,6 +15,9 @@ export default defineConfig({
             "@decky/ui": fileURLToPath(
                 new URL("./src/test/decky-ui.stub.ts", import.meta.url)
             ),
+            "@decky/api": fileURLToPath(
+                new URL("./src/test/decky-api.stub.ts", import.meta.url)
+            ),
         },
     },
 });

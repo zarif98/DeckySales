@@ -23,21 +23,16 @@ async function boot(world: World = {}) {
     const requests: string[] = [];
     const settingsStore: Record<string, unknown> = {};
 
-    const api: any = {
-        callPluginMethod: async (method: string, args: any) => {
-            if (method === "settings_load") {
-                const stored = settingsStore[args.key];
-                return { success: true, result: stored !== undefined ? stored : args.defaults };
-            }
-            settingsStore[args.key] = args.value;
-            return { success: true, result: args.value };
-        },
-        fetchNoCors: async (url: string) => {
-            requests.push(url);
-            if (world.endpointFails) return { success: false, result: null };
-            const body = world.payload ?? { itad_api_key: HOSTED_KEY };
-            return { success: true, result: { body: JSON.stringify(body) } };
-        },
+    const decky = await import("@decky/api") as any;
+    decky.deckyApi.call = async (method: string, key: string, value: unknown) => {
+        if (method === "settings_load") return settingsStore[key] ?? value;
+        settingsStore[key] = value;
+        return value;
+    };
+    decky.deckyApi.fetchNoCors = async (url: string) => {
+        requests.push(url);
+        if (world.endpointFails) return decky.httpError(503);
+        return decky.json(world.payload ?? { itad_api_key: HOSTED_KEY });
     };
 
     const { Cache } = await import("../utils/Cache");
@@ -45,8 +40,7 @@ async function boot(world: World = {}) {
     const { providerAuthService } = await import("./ProviderAuthService");
 
     Cache.init();
-    settingsModule.Settings.init(api);
-    providerAuthService.init(api);
+    settingsModule.Settings.init();
 
     return { providerAuthService, settingsModule, Setting: settingsModule.Setting, requests };
 }

@@ -1,5 +1,5 @@
 import { findModuleExport } from "@decky/ui"
-import type { DeckyServer as ServerAPI } from "../platform"
+import { fetchNoCors } from "@decky/api"
 import { CACHE } from "../utils/Cache"
 import { priceService } from "../service/PriceService"
 import { exchangeRateService } from "../service/ExchangeRateService"
@@ -50,7 +50,7 @@ const History: {
     location?: Info;
 } = findModuleExport((e: any) => !!e?.m_history)?.m_history
 
-export const injectStore = (serverApi: ServerAPI) => {
+export const injectStore = () => {
     // =========================================================================
     // PART 1: Lifecycle State + Early Exit
     // Purpose: Initialize runtime state and fail closed if router hooks are unavailable.
@@ -1078,8 +1078,8 @@ export const injectStore = (serverApi: ServerAPI) => {
 
         try {
             // 1. Fetch the tabs
-            const response = await serverApi.fetchNoCors('http://localhost:8080/json');
-            if (!response.success) {
+            const response = await fetchNoCors('http://localhost:8080/json');
+            if (!response.ok) {
                 if (retries > 0 && isStoreMounted) {
                     retryTimer = setTimeout(() => connectToStoreDebugger(retries - 1), 1000);
                     return;
@@ -1088,7 +1088,7 @@ export const injectStore = (serverApi: ServerAPI) => {
                 return;
             }
 
-            const tabs: Tab[] = JSON.parse(response.result.body) || [];
+            const tabs: Tab[] = JSON.parse(await response.text()) || [];
             const storeTab = tabs.find((tab) => tab.url.includes('https://store.steampowered.com'));
 
             // Early return if no store tab / websocket

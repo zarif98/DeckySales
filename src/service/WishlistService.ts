@@ -1,5 +1,5 @@
 import { Navigation } from "@decky/ui";
-import type { DeckyServer as ServerAPI } from "../platform";
+import { fetchNoCors, toaster } from "@decky/api";
 import { SETTINGS, Setting } from "../utils/Settings";
 import { priceService } from "./PriceService";
 import { DEALS_ROUTE, Deal, buildRowDeals, pickWishlistDeal, planAnnouncements, storePageUrlFor } from "../utils/Deals";
@@ -39,7 +39,6 @@ class WishlistService {
     // =========================================================================
     // PART 1: Service State
     // =========================================================================
-    private serverApi: ServerAPI | undefined;
     private timer: NodeJS.Timeout | null = null;
     private running = false;
     /** Bumped on every start/stop so a delayed first pass cannot re-arm a stopped watcher. */
@@ -60,9 +59,6 @@ class WishlistService {
     /** Steam app id -> ITAD game id, cached for the session. */
     private idCache = new Map<string, string>();
 
-    public init(serverApi: ServerAPI) {
-        this.serverApi = serverApi;
-    }
 
     // =========================================================================
     // PART 2: Scheduling
@@ -154,14 +150,6 @@ class WishlistService {
         }
     }
 
-    private parseBodyString(result: unknown): string | null {
-        if (result && typeof result === "object" && "body" in result && typeof (result as any).body === "string") {
-            return (result as any).body;
-        }
-        if (typeof result === "string") return result;
-        return null;
-    }
-
     /**
      * Read the wishlist from the Steam client's own store session.
      *
@@ -172,7 +160,7 @@ class WishlistService {
      * for an empty one alike, so a user with games but restricted game details
      * is indistinguishable from one with nothing wishlisted.
      *
-     * It must go through the page's own fetch rather than the platform's: the
+     * It must go through the page's own fetch rather than Decky's fetchNoCors: the
      * plugin frontend runs inside the Steam client, where the request carries
      * the existing store session. The backend proxy has no such session, so
      * routing this through it would return someone else's view - nobody's.
@@ -203,7 +191,6 @@ class WishlistService {
     }
 
     public async fetchWishlistAppIds(): Promise<{ appIds: string[]; total?: number; error?: string }> {
-        if (!this.serverApi) return { appIds: [], error: "notReady" };
 
         const fromClient = await this.fetchWishlistFromClient();
         if (fromClient) return fromClient;
@@ -215,10 +202,10 @@ class WishlistService {
         if (!this.isAllowedWishlistUrl(url)) return { appIds: [], error: "blocked" };
 
         try {
-            const res = await this.serverApi.fetchNoCors(url, { method: "GET" });
-            if (!res.success) return { appIds: [], error: "fetchFailed" };
+            const res = await fetchNoCors(url, { method: "GET" });
+            if (!res.ok) return { appIds: [], error: "fetchFailed" };
 
-            const body = this.parseBodyString(res.result);
+            const body = await res.text();
             if (!body || body.length > this.MAX_RESPONSE_BYTES) return { appIds: [], error: "badResponse" };
 
             return parseWishlistAppIds(JSON.parse(body), this.MAX_WISHLIST_APPS);
@@ -375,7 +362,6 @@ class WishlistService {
     }
 
     private async announce(candidates: WishlistCandidate[]) {
-        if (!this.serverApi) return;
 
         // Biggest discount first, so the summary toast leads with the best find.
         const byDiscount = [...candidates].sort((a, b) => b.deal.cut - a.deal.cut);
@@ -384,7 +370,7 @@ class WishlistService {
             for (const candidate of byDiscount) {
                 const title = await priceService.getGameTitle(candidate.gameId)
                     || t("wishlist.toast.fallbackTitle");
-                this.serverApi.toaster.toast({
+                toaster.toast({
                     title,
                     body: this.formatDeal(candidate.deal),
                     duration: 8000,
@@ -396,7 +382,7 @@ class WishlistService {
 
         const headline = byDiscount[0];
         const title = await priceService.getGameTitle(headline.gameId) || t("wishlist.toast.fallbackTitle");
-        this.serverApi.toaster.toast({
+        toaster.toast({
             title: t("wishlist.toast.summaryTitle").replace("{count}", String(byDiscount.length)),
             body: `${title} - ${this.formatDeal(headline.deal)}`,
             duration: 10000,

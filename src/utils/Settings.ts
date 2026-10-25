@@ -1,4 +1,4 @@
-import type { DeckyServer as ServerAPI } from "../platform";
+import { call } from "@decky/api";
 import { CACHE } from "./Cache";
 import { ALL_STORE_IDS } from "./Stores";
 
@@ -26,50 +26,32 @@ export enum Setting {
 
 export let SETTINGS: Settings
 
-/**
- * How long to wait for the Python backend before falling back to defaults.
- *
- * A backend that failed to start never answers at all, and the call that was
- * waiting on it never settles. Every screen that loads a setting before it can
- * render then waits forever - which is what a crashed backend looked like to
- * users in v1.2.3: a spinner that never stopped, with no error anywhere. A
- * settings read is local and takes milliseconds, so anything past this is not
- * slow, it is not coming.
- */
+// A backend that failed to start never answers, so every call is bounded;
+// otherwise screens that load a setting wait forever.
 const BACKEND_TIMEOUT_MS = 5000;
+const TIMED_OUT = Symbol("timed out");
+const FAILED = Symbol("failed");
 
-/** Returned instead of a backend reply when the wait ran out. */
-const TIMED_OUT = Symbol("backend timeout");
-
-/**
- * Resolve to `TIMED_OUT` if `promise` has not settled within BACKEND_TIMEOUT_MS.
- *
- * The timer is always cleared, so a prompt answer does not hold the event loop
- * open for the rest of the timeout, and a late answer is ignored rather than
- * rejecting into an unhandled promise.
- */
-async function withTimeout<T>(promise: Promise<T>, timedOut: typeof TIMED_OUT, label: string): Promise<T | typeof TIMED_OUT> {
+async function backendCall<T>(label: string, method: string, ...args: unknown[]): Promise<T | typeof TIMED_OUT | typeof FAILED> {
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const answer = call<unknown[], T>(method, ...args).catch((e): typeof FAILED => {
+    console.error(`[DeckySales] ${label} failed`, e);
+    return FAILED;
+  });
+  const timeout = new Promise<typeof TIMED_OUT>(resolve => {
+    timer = setTimeout(() => {
+      console.error(`[DeckySales] Backend did not answer ${label} within ${BACKEND_TIMEOUT_MS}ms; using defaults. Check the plugin's backend log.`);
+      resolve(TIMED_OUT);
+    }, BACKEND_TIMEOUT_MS);
+  });
   try {
-    return await Promise.race([
-      promise,
-      new Promise<typeof TIMED_OUT>(resolve => {
-        timer = setTimeout(() => {
-          console.error(
-            `[DeckySales] The Python backend did not answer ${label} within ${BACKEND_TIMEOUT_MS}ms. ` +
-            "Carrying on with defaults - the backend is probably not running, so check its log."
-          );
-          resolve(timedOut);
-        }, BACKEND_TIMEOUT_MS);
-      }),
-    ]);
+    return await Promise.race([answer, timeout]);
   } finally {
-    if (timer !== undefined) clearTimeout(timer);
+    clearTimeout(timer);
   }
 }
 
 export class Settings {
-  private readonly serverAPI: ServerAPI;
   public defaults: Record<Setting, any> = {
     fontSize: 16,
     paddingBottom: 10,
@@ -92,12 +74,8 @@ export class Settings {
     wishlistLastCheck: 0,
   };
 
-  constructor(serverAPI: ServerAPI) {
-    this.serverAPI = serverAPI;
-  }
-
-  static init(serverAPI: ServerAPI) {
-    SETTINGS = new Settings(serverAPI)
+  static init() {
+    SETTINGS = new Settings()
   }
 
   async load(key: Setting) {
@@ -106,43 +84,17 @@ export class Settings {
       return cacheValue
     }
 
-    const response = await withTimeout(
-      this.serverAPI.callPluginMethod("settings_load", {
-        key: key,
-        defaults: this.defaults[key]
-      }),
-      TIMED_OUT,
-      `settings_load(${key})`,
-    );
+    const result = await backendCall<unknown>(`settings_load(${key})`, "settings_load", key, this.defaults[key]);
+    // Not cached on timeout, so a backend that comes back later is used.
+    if (result === TIMED_OUT) return this.defaults[key];
 
-    // A timeout is not an answer, so it is not cached: caching the default
-    // would make the fallback permanent for the session and hide a backend
-    // that came back. A backend that answered with a failure is cached as
-    // before, since that is a real answer about a real key.
-    if (response === TIMED_OUT) return this.defaults[key];
-
-    if (response.success && response.result != undefined) {
-      CACHE.setValue(key, response.result)
-      return response.result;
-    }
-    CACHE.setValue(key, this.defaults[key])
-    return this.defaults[key];
+    const value = result === FAILED || result == undefined ? this.defaults[key] : result;
+    CACHE.setValue(key, value)
+    return value;
   }
-
 
   async save(key: Setting, value: any) {
     CACHE.setValue(key, value)
-
-    // Bounded for the same reason as load: callers await this in sequence, so
-    // one unanswered write would stall the whole wishlist check. The value is
-    // already in the cache, so the session carries on with it either way.
-    await withTimeout(
-      this.serverAPI.callPluginMethod("settings_save", {
-        key: key,
-        value: value,
-      }),
-      TIMED_OUT,
-      `settings_save(${key})`,
-    );
+    await backendCall(`settings_save(${key})`, "settings_save", key, value);
   }
 }

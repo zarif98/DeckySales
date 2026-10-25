@@ -1,4 +1,4 @@
-import type { DeckyServer as ServerAPI } from "../platform";
+import { fetchNoCors } from "@decky/api";
 import { SETTINGS, Setting } from "../utils/Settings";
 import { ALL_STORE_IDS, STORES } from "../utils/Stores";
 import { Deal, normalizeDeals } from "../utils/Deals";
@@ -30,10 +30,8 @@ export interface PriceData {
 
 class PriceService {
     // =========================================================================
-    // PART 1: Service State + Bootstrap
-    // Purpose: Hold the ServerAPI dependency and initialize it once.
+    // PART 1: Service State
     // =========================================================================
-    private serverApi: ServerAPI | undefined;
     private readonly LOOKUP_HOST = "api.isthereanydeal.com";
     private readonly LOOKUP_PATH = "/games/lookup/v1";
     private readonly HISTORY_HOST = "api.isthereanydeal.com";
@@ -49,9 +47,6 @@ class PriceService {
     private titleCache = new Map<string, string>();
     private readonly MAX_RESPONSE_BYTES = 2 * 1024 * 1024; // 2MB hard cap
 
-    public init(serverApi: ServerAPI) {
-        this.serverApi = serverApi;
-    }
 
     public getSteamDBUrl(appId: string): string {
         return `https://steamdb.info/app/${appId}/`;
@@ -112,18 +107,7 @@ class PriceService {
         }
     }
 
-    private parseBodyString(result: unknown): string | null {
-        if (result && typeof result === "object" && "body" in result && typeof (result as any).body === "string") {
-            return (result as any).body;
-        }
-        if (typeof result === "string") {
-            return result;
-        }
-        return null;
-    }
-
-    private parseLookupResponse(result: unknown): { gameId: string; gameSlug: string } | null {
-        const body = this.parseBodyString(result);
+    private parseLookupResponse(body: string): { gameId: string; gameSlug: string } | null {
         if (!body || body.length > this.MAX_RESPONSE_BYTES) return null;
 
         let data: unknown;
@@ -147,8 +131,7 @@ class PriceService {
         return { gameId, gameSlug };
     }
 
-    private parseHistoryResponse(result: unknown): any[] | null {
-        const body = this.parseBodyString(result);
+    private parseHistoryResponse(body: string): any[] | null {
         if (!body || body.length > this.MAX_RESPONSE_BYTES) return null;
 
         let data: unknown;
@@ -162,8 +145,7 @@ class PriceService {
         return data;
     }
 
-    private parseJsonBody(result: unknown): unknown | null {
-        const body = this.parseBodyString(result);
+    private parseJsonBody(body: string): unknown | null {
         if (!body || body.length > this.MAX_RESPONSE_BYTES) return null;
         try {
             return JSON.parse(body);
@@ -197,7 +179,7 @@ class PriceService {
      */
     public async getDealsForGameIds(gameIds: string[]): Promise<Map<string, Deal[]>> {
         const out = new Map<string, Deal[]>();
-        if (!this.serverApi || gameIds.length === 0) return out;
+        if (gameIds.length === 0) return out;
 
         const apiKey = await providerAuthService.getItadKey();
         if (!apiKey) return out;
@@ -209,14 +191,14 @@ class PriceService {
         for (let i = 0; i < gameIds.length; i += this.MAX_BULK_IDS) {
             const chunk = gameIds.slice(i, i + this.MAX_BULK_IDS);
             try {
-                const res = await this.serverApi.fetchNoCors(pricesUrl, {
+                const res = await fetchNoCors(pricesUrl, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(chunk)
                 });
-                if (!res.success) continue;
+                if (!res.ok) continue;
 
-                const parsed = this.parseJsonBody(res.result);
+                const parsed = this.parseJsonBody(await res.text());
                 if (!Array.isArray(parsed)) continue;
 
                 for (const item of parsed) {
@@ -238,7 +220,6 @@ class PriceService {
      */
     public async lookupItadIds(appIds: string[]): Promise<Map<string, string>> {
         const out = new Map<string, string>();
-        if (!this.serverApi) return out;
 
         const safeAppIds = appIds.filter(id => isValidAppId(id));
         if (safeAppIds.length === 0) return out;
@@ -252,14 +233,14 @@ class PriceService {
         for (let i = 0; i < safeAppIds.length; i += this.MAX_BULK_IDS) {
             const chunk = safeAppIds.slice(i, i + this.MAX_BULK_IDS);
             try {
-                const res = await this.serverApi.fetchNoCors(lookupUrl, {
+                const res = await fetchNoCors(lookupUrl, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(chunk.map(id => `app/${id}`))
                 });
-                if (!res.success) continue;
+                if (!res.ok) continue;
 
-                const parsed = this.parseJsonBody(res.result);
+                const parsed = this.parseJsonBody(await res.text());
                 for (const [appId, gameId] of parseBulkLookupMap(parsed)) {
                     out.set(appId, gameId);
                 }
@@ -277,7 +258,6 @@ class PriceService {
      * Titles are memoised for the session.
      */
     public async getGameTitle(gameId: string): Promise<string | null> {
-        if (!this.serverApi) return null;
         if (!/^[A-Za-z0-9-]{1,128}$/.test(gameId)) return null;
 
         const cached = this.titleCache.get(gameId);
@@ -292,10 +272,10 @@ class PriceService {
         if (!this.isAllowedApiUrl(url.toString())) return null;
 
         try {
-            const res = await this.serverApi.fetchNoCors(url.toString(), { method: "GET" });
-            if (!res.success) return null;
+            const res = await fetchNoCors(url.toString(), { method: "GET" });
+            if (!res.ok) return null;
 
-            const parsed = this.parseJsonBody(res.result);
+            const parsed = this.parseJsonBody(await res.text());
             const title = (parsed as any)?.title;
             if (typeof title !== "string" || title.length === 0 || title.length > 256) return null;
 
@@ -310,7 +290,7 @@ class PriceService {
     // PART 3: Main Price Lookup Flow
     // Purpose: Resolve ITAD game id, fetch history, and produce normalized output.
     // Security:
-    // - Requires initialized ServerAPI + valid provider key.
+    // - Requires a valid provider key.
     // - Uses HTTPS ITAD API endpoints only.
     // - Fails closed to { data: null, error } on malformed responses.
     // =========================================================================
@@ -331,7 +311,6 @@ class PriceService {
     }
 
     public async getLowestPrice(appId: string): Promise<{ data: PriceData | null, error?: string, debug?: any }> {
-        if (!this.serverApi) return { data: null, error: "ServerAPI not initialized" };
         if (!isValidAppId(appId)) return { data: null, error: "Invalid app id format" };
 
         const apiKey = await providerAuthService.getItadKey();
@@ -355,13 +334,13 @@ class PriceService {
             if (!this.isAllowedApiUrl(lookupUrl)) {
                 return { data: null, error: "Lookup URL failed security policy", debug: { lookupUrl: this.redactUrl(lookupUrl) } };
             }
-            const lookupRes = await this.serverApi.fetchNoCors(lookupUrl, { method: "GET" });
+            const lookupRes = await fetchNoCors(lookupUrl, { method: "GET" });
 
-            if (!lookupRes.success) {
+            if (!lookupRes.ok) {
                 return { data: null, error: "Lookup fetch failed", debug: { lookupUrl: this.redactUrl(lookupUrl) } };
             }
 
-            const parsedLookup = this.parseLookupResponse(lookupRes.result);
+            const parsedLookup = this.parseLookupResponse(await lookupRes.text());
             if (!parsedLookup) {
                 return { data: null, error: "Invalid lookup response", debug: { lookupUrl: this.redactUrl(lookupUrl) } };
             }
@@ -381,13 +360,13 @@ class PriceService {
             if (!this.isAllowedApiUrl(historyUrl)) {
                 return { data: null, error: "History URL failed security policy", debug: { lookupUrl: this.redactUrl(lookupUrl), historyUrl: this.redactUrl(historyUrl) } };
             }
-            const historyRes = await this.serverApi.fetchNoCors(historyUrl, { method: "GET" });
+            const historyRes = await fetchNoCors(historyUrl, { method: "GET" });
 
-            if (!historyRes.success) {
+            if (!historyRes.ok) {
                 return { data: null, error: "History fetch failed", debug: { lookupUrl: this.redactUrl(lookupUrl), historyUrl: this.redactUrl(historyUrl) } };
             }
 
-            const historyData = this.parseHistoryResponse(historyRes.result);
+            const historyData = this.parseHistoryResponse(await historyRes.text());
 
             if (!historyData) {
                 return {

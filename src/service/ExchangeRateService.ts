@@ -1,4 +1,4 @@
-import type { DeckyServer as ServerAPI } from "../platform";
+import { fetchNoCors } from "@decky/api";
 import { CACHE } from "../utils/Cache";
 import { isValidCurrencyCode, parseCurrencyApiRates } from "../utils/ApiParsing";
 
@@ -29,7 +29,6 @@ class ExchangeRateService {
     // PART 1: Service State + Cache Policy
     // Purpose: Hold runtime dependencies and cache configuration.
     // =========================================================================
-    private serverApi: ServerAPI | undefined;
     private readonly CACHE_KEY = "exchange_rates";
     private readonly CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
     private readonly MAX_RESPONSE_BYTES = 2 * 1024 * 1024; // 2MB hard cap
@@ -42,9 +41,6 @@ class ExchangeRateService {
         { host: "latest.currency-api.pages.dev", prefix: "/v1/currencies/" },
     ];
 
-    public init(serverApi: ServerAPI) {
-        this.serverApi = serverApi;
-    }
 
     private isValidCurrencyCode(currency: string): boolean {
         return isValidCurrencyCode(currency);
@@ -69,16 +65,6 @@ class ExchangeRateService {
         }
     }
 
-    private parseBodyString(result: unknown): string | null {
-        if (result && typeof result === "object" && "body" in result && typeof (result as any).body === "string") {
-            return (result as any).body;
-        }
-        if (typeof result === "string") {
-            return result;
-        }
-        return null;
-    }
-
     // =========================================================================
     // PART 2: Public Rate Retrieval
     // Purpose: Cache-first entrypoint for rate consumers.
@@ -87,7 +73,6 @@ class ExchangeRateService {
      * Get exchange rates, using cache if available and fresh
      */
     public async getExchangeRates(baseCurrency: string = "USD"): Promise<ExchangeRates | null> {
-        if (!this.serverApi) return null;
         if (!this.isValidCurrencyCode(baseCurrency)) return null;
 
         // Check cache first
@@ -180,7 +165,6 @@ class ExchangeRateService {
     // - Rejects malformed or oversized payloads per mirror.
     // =========================================================================
     private async fetchExchangeRates(baseCurrency: string): Promise<ExchangeRates | null> {
-        if (!this.serverApi) return null;
         if (!this.isValidCurrencyCode(baseCurrency)) return null;
 
         for (const mirror of this.MIRRORS) {
@@ -203,10 +187,10 @@ class ExchangeRateService {
         if (!this.isAllowedRatesUrl(url)) return null;
 
         try {
-            const response = await this.serverApi!.fetchNoCors(url, { method: "GET" });
-            if (!response.success) return null;
+            const response = await fetchNoCors(url, { method: "GET" });
+            if (!response.ok) return null;
 
-            const body = this.parseBodyString(response.result);
+            const body = await response.text();
             if (!body || body.length > this.MAX_RESPONSE_BYTES) return null;
 
             const parsed = parseCurrencyApiRates(JSON.parse(body), baseCurrency);

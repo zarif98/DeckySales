@@ -194,7 +194,7 @@ The plugin applies strict response filtering so compromised or malformed provide
 | `src/utils/Deals.ts` | Pure deal normalization, alert selection, announcement de-duplication, and deals-list shaping. |
 | `src/components/DealsPage.tsx` | Full-page list of wishlist deals found by the last check; opens store pages. |
 | `src/test/decky-ui.stub.ts` | Test-only stand-in for the Steam-client-only `@decky/ui` library. |
-| `src/platform.ts` | The single adapter over Decky's runtime API (`@decky/api`): HTTP, backend calls, notifications. |
+| `src/test/decky-api.stub.ts` | Test-only stand-in for `@decky/api`, which only exists inside Decky Loader. |
 | `tests_py/` | Backend tests: atomic settings writes, unreadable-file handling, Deckdeals migration. |
 | `src/utils/ApiParsing.ts` | Pure validation/parsing of external API payloads and store-selection inputs. |
 | `src/utils/Deals.test.ts` | Unit tests for deal normalization and notification de-duplication. |

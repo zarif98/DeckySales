@@ -7,12 +7,9 @@ const CREDENTIALS_HOST = new URL(CREDENTIALS_ENDPOINT).hostname;
 /*
  * End-to-end tests for the wishlist alert flow, with Steam and ITAD faked.
  *
- * There is no simulated Steam client, but there does not need to be: every
- * external dependency reaches the plugin through the ServerAPI object Decky
- * injects - `fetchNoCors` for all network traffic, `callPluginMethod` for
- * settings persistence, and `toaster.toast` for the notification itself. A
- * fake ServerAPI therefore lets us drive the real code path end to end and
- * assert on the toast that comes out, instead of waiting for a real sale.
+ * Every external dependency comes through @decky/api (`fetchNoCors`, `call`,
+ * `toaster`), which vitest swaps for src/test/decky-api.stub.ts, so the real
+ * code path runs end to end and the tests assert on the toasts it produces.
  *
  * Each test gets fresh module instances (the services are singletons holding
  * their own caches), so scenarios cannot leak into one another.
@@ -59,34 +56,23 @@ function makeWorld(overrides: Partial<WorldState> = {}): WorldState {
     };
 }
 
-/** Build the fake ServerAPI Decky would otherwise provide. */
-function makeServerApi(world: WorldState) {
+/** Fake @decky/api handlers for this world. */
+function makeDecky(world: WorldState) {
     const toasts: { title: string; body: string; onClick?: () => void }[] = [];
     const settingsStore: Record<string, unknown> = {};
     const requests: { url: string; body?: string }[] = [];
 
-    const json = (value: unknown) => ({ success: true, result: { status: 200, body: JSON.stringify(value) } });
+    const json = (value: unknown) => new Response(JSON.stringify(value), { status: 200 });
+    const httpError = (status: number) => new Response("", { status });
 
-    const serverApi = {
-        toaster: {
-            toast: (t: any) => {
-                toasts.push({ title: String(t.title), body: String(t.body), onClick: t.onClick });
-            },
+    const handlers = {
+        call: async (method: string, key: string, value: unknown) => {
+            if (method === "settings_load") return key in settingsStore ? settingsStore[key] : value;
+            if (method === "settings_save") { settingsStore[key] = value; return value; }
+            throw new Error(`unexpected backend call: ${method}`);
         },
 
-        callPluginMethod: async (method: string, args: any) => {
-            if (method === "settings_load") {
-                const stored = settingsStore[args.key];
-                return { success: true, result: stored !== undefined ? stored : args.defaults };
-            }
-            if (method === "settings_save") {
-                settingsStore[args.key] = args.value;
-                return { success: true, result: args.value };
-            }
-            return { success: false, result: null };
-        },
-
-        fetchNoCors: async (url: string, init?: any) => {
+        fetchNoCors: async (url: string, init?: any): Promise<Response> => {
             requests.push({ url, body: init?.body });
             const target = new URL(url);
 
@@ -116,7 +102,7 @@ function makeServerApi(world: WorldState) {
 
             // ITAD live prices.
             if (target.pathname === "/games/prices/v3") {
-                if (world.pricesFail) return { success: false, result: null };
+                if (world.pricesFail) return httpError(503);
                 const requested: string[] = JSON.parse(init.body);
                 return json(requested.map(id => ({
                     id,
@@ -136,11 +122,11 @@ function makeServerApi(world: WorldState) {
                 return json({ title: world.titles[id] ?? "Unknown Game" });
             }
 
-            return { success: false, result: null };
+            return httpError(404);
         },
     };
 
-    return { serverApi, toasts, settingsStore, requests };
+    return { handlers, toasts, settingsStore, requests };
 }
 
 /** Fresh module instances plus a wired-up fake device. */
@@ -149,28 +135,26 @@ async function boot(world: WorldState) {
 
     (globalThis as any).window = { App: { m_CurrentUser: { strSteamID: STEAM_ID } } };
 
-    const harness = makeServerApi(world);
-    const api = harness.serverApi as any;
+    const harness = makeDecky(world);
+    const deckyApi = (await import("@decky/api") as any).deckyApi;
+    deckyApi.call = harness.handlers.call;
+    deckyApi.fetchNoCors = harness.handlers.fetchNoCors;
+    deckyApi.toasts = harness.toasts;
 
     const { Cache } = await import("../utils/Cache");
     // SETTINGS is a `let` binding assigned by init(), so hold the module and
     // read through it rather than destructuring the (still undefined) value.
     const settingsModule = await import("../utils/Settings");
     const { Settings, Setting } = settingsModule;
-    const { providerAuthService } = await import("./ProviderAuthService");
-    const { priceService } = await import("./PriceService");
     const { wishlistService } = await import("./WishlistService");
     const decky = await import("@decky/ui") as any;
     decky.resetNavCalls();
 
     Cache.init();
-    Settings.init(api);
-    providerAuthService.init(api);
-    priceService.init(api);
-    wishlistService.init(api);
+    Settings.init();
 
-    // The in-client route goes through the page's own fetch, not the platform
-    // adapter, because only the page carries the Steam store session. Leaving
+    // The in-client route goes through the page's own fetch, not Decky's
+    // fetchNoCors, because only the page carries the Steam store session. Leaving
     // pageFetch undefined is how a world says that route is unavailable, which
     // is what forces the fall back to the public API.
     wishlistService.pageFetch = world.clientWishlist === undefined

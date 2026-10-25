@@ -19,33 +19,28 @@ interface World {
 async function boot(world: World = {}) {
     vi.resetModules();
 
-    const api: any = {
-        callPluginMethod: async (_method: string, args: any) => ({ success: true, result: args.defaults }),
-        fetchNoCors: async (url: string) => {
-            const u = new URL(url);
-            const json = (v: unknown) => ({ success: true, result: { body: JSON.stringify(v) } });
-            if (u.hostname === CREDENTIALS_HOST) return json({ itad_api_key: API_KEY });
-            if (u.pathname === "/games/lookup/v1") {
-                if (world.lookupFails) return { success: false, result: null };
-                return json({ found: true, game: { id: "game-1", slug: "game-one" } });
-            }
-            if (u.pathname === "/games/history/v2") {
-                if (world.historyFails) return { success: false, result: null };
-                return json([]);
-            }
-            return { success: false, result: null };
-        },
+    const decky = await import("@decky/api") as any;
+    decky.deckyApi.call = async (_method: string, _key: string, value: unknown) => value;
+    decky.deckyApi.fetchNoCors = async (url: string) => {
+        const u = new URL(url);
+        if (u.hostname === CREDENTIALS_HOST) return decky.json({ itad_api_key: API_KEY });
+        if (u.pathname === "/games/lookup/v1") {
+            if (world.lookupFails) return decky.httpError(500);
+            return decky.json({ found: true, game: { id: "game-1", slug: "game-one" } });
+        }
+        if (u.pathname === "/games/history/v2") {
+            if (world.historyFails) return decky.httpError(500);
+            return decky.json([]);
+        }
+        return decky.httpError(404);
     };
 
     const { Cache } = await import("../utils/Cache");
     const settingsModule = await import("../utils/Settings");
-    const { providerAuthService } = await import("./ProviderAuthService");
     const { priceService } = await import("./PriceService");
 
     Cache.init();
-    settingsModule.Settings.init(api);
-    providerAuthService.init(api);
-    priceService.init(api);
+    settingsModule.Settings.init();
 
     return { priceService };
 }

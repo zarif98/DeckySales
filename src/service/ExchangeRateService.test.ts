@@ -22,21 +22,17 @@ async function boot(world: World = {}) {
     vi.resetModules();
     const requests: string[] = [];
 
-    const api: any = {
-        fetchNoCors: async (url: string) => {
-            requests.push(url);
-            const host = new URL(url).hostname;
-            if (world.down?.includes(host)) return { success: false, result: null };
-            const body = world.bodies?.[host] ?? goodBody;
-            return { success: true, result: { body: JSON.stringify(body) } };
-        },
-        callPluginMethod: async () => ({ success: true, result: null }),
+    const decky = await import("@decky/api") as any;
+    decky.deckyApi.fetchNoCors = async (url: string) => {
+        requests.push(url);
+        const host = new URL(url).hostname;
+        if (world.down?.includes(host)) return decky.httpError(503);
+        return decky.json(world.bodies?.[host] ?? goodBody);
     };
 
     const { Cache } = await import("../utils/Cache");
     const { exchangeRateService } = await import("./ExchangeRateService");
     Cache.init();
-    exchangeRateService.init(api);
 
     return { exchangeRateService, requests };
 }

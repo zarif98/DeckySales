@@ -10,13 +10,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 /** A call that never settles - exactly what a dead backend produces. */
 const NEVER = () => new Promise<any>(() => {});
 
-async function boot(callPluginMethod: (method: string, args: any) => Promise<any>) {
+async function boot(call: (method: string, ...args: any[]) => Promise<any>) {
     vi.resetModules();
+    const decky = await import("@decky/api") as any;
+    decky.deckyApi.call = call;
     const { Cache } = await import("./Cache");
     const { Settings, Setting } = await import("./Settings");
 
     Cache.init();
-    Settings.init({ callPluginMethod, fetchNoCors: NEVER, toaster: { toast: () => {} } } as any);
+    Settings.init();
 
     const { SETTINGS } = await import("./Settings");
     return { SETTINGS, Setting };
@@ -68,7 +70,7 @@ describe("Settings when the backend never answers", () => {
         // session and hide a backend that came back.
         let answer = false;
         const { SETTINGS, Setting } = await boot(async () =>
-            answer ? { success: true, result: "GB" } : await NEVER()
+            answer ? "GB" : await NEVER()
         );
 
         const first = SETTINGS.load(Setting.COUNTRY);
@@ -82,17 +84,15 @@ describe("Settings when the backend never answers", () => {
 
 describe("Settings with a working backend", () => {
     it("returns the stored value and does not wait out the timeout", async () => {
-        const { SETTINGS, Setting } = await boot(async (_method, args) => ({
-            success: true,
-            result: args.key === "country" ? "DE" : undefined,
-        }));
+        const { SETTINGS, Setting } = await boot(async (_method, key) => (key === "country" ? "DE" : undefined));
 
         // Real timers: a resolved call must not be held up by the timeout timer.
         await expect(SETTINGS.load(Setting.COUNTRY)).resolves.toBe("DE");
     });
 
-    it("falls back to the default when the backend answers with a failure", async () => {
-        const { SETTINGS, Setting } = await boot(async () => ({ success: false, result: "boom" }));
+    it("falls back to the default when the backend call fails", async () => {
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        const { SETTINGS, Setting } = await boot(async () => { throw new Error("boom"); });
 
         await expect(SETTINGS.load(Setting.WISHLIST_MIN_DISCOUNT)).resolves.toBe(20);
     });
