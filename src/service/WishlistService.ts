@@ -7,26 +7,9 @@ import { isValidSteamId64, parseDynamicStoreWishlist, parseWishlistAppIds } from
 import { t } from "../l10n";
 
 /*
- * WishlistService watches the signed-in user's Steam wishlist and raises a
- * Decky toast when a wishlisted game is discounted anywhere - not just on
- * Steam. Steam itself only notifies about Steam sales, which is exactly the
- * gap this fills.
- *
- * Flow:
- * 1) Resolve the signed-in SteamID64 from the Steam client frontend.
- * 2) Read the wishlist from the Steam client's own session, falling back to
- *    the public API. See fetchWishlistAppIds for why that order matters.
- * 3) Bulk-resolve those app ids to ITAD game ids (cached in memory).
- * 4) Ask ITAD for live prices across every store the user selected.
- * 5) Toast anything at or above the configured discount that we have not
- *    already announced at that exact price.
- *
- * Security model:
- * - Hosts contacted: the Steam store (the user's own session, wishlist only),
- *   Steam's public API as a fallback, and ITAD (via PriceService).
- * - The SteamID is read locally and validated as a 17-digit number.
- * - Response payloads are size-bounded and strictly shape-checked.
- * - Every failure path is non-fatal; the watcher simply retries next cycle.
+ * Watches the user's Steam wishlist and sends a toast when a game on it is
+ * discounted at any store, not just Steam. Failures are non-fatal; the next
+ * scheduled check retries.
  */
 
 interface WishlistCandidate {
@@ -36,9 +19,6 @@ interface WishlistCandidate {
 }
 
 class WishlistService {
-    // =========================================================================
-    // PART 1: Service State
-    // =========================================================================
     private timer: NodeJS.Timeout | null = null;
     private running = false;
     /** Bumped on every start/stop so a delayed first pass cannot re-arm a stopped watcher. */
@@ -60,10 +40,6 @@ class WishlistService {
     private idCache = new Map<string, string>();
 
 
-    // =========================================================================
-    // PART 2: Scheduling
-    // Purpose: Run a check shortly after boot, then on the configured interval.
-    // =========================================================================
     public async start() {
         await this.stop();
 
@@ -104,12 +80,6 @@ class WishlistService {
         return hours;
     }
 
-    // =========================================================================
-    // PART 3: SteamID Discovery
-    // Purpose: Read the signed-in account id from the Steam client frontend.
-    // Security: Accepts only a 17-digit SteamID64; never leaves the device
-    //           except as the `steamid` parameter of Steam's own wishlist API.
-    // =========================================================================
     private getSteamId(): string | null {
         const candidates: unknown[] = [];
         try {
@@ -128,11 +98,6 @@ class WishlistService {
         return null;
     }
 
-    // =========================================================================
-    // PART 4: Wishlist Retrieval
-    // Purpose: Pull wishlisted app ids from Steam's public wishlist API.
-    // Security: Pinned HTTPS host/path, bounded body, strict array parsing.
-    // =========================================================================
     private buildWishlistUrl(steamId: string): string {
         const url = new URL(`https://${this.WISHLIST_HOST}${this.WISHLIST_PATH}`);
         url.searchParams.set("steamid", steamId);
@@ -151,22 +116,11 @@ class WishlistService {
     }
 
     /**
-     * Read the wishlist from the Steam client's own store session.
-     *
-     * This is the preferred source. It reflects who is signed in rather than
-     * what the account publishes, so it works whatever the profile's "Game
-     * details" privacy setting is - which the public API does not: that
-     * endpoint answers 200 with `{"response":{}}` for a private wishlist and
-     * for an empty one alike, so a user with games but restricted game details
-     * is indistinguishable from one with nothing wishlisted.
-     *
-     * It must go through the page's own fetch rather than Decky's fetchNoCors: the
-     * plugin frontend runs inside the Steam client, where the request carries
-     * the existing store session. The backend proxy has no such session, so
-     * routing this through it would return someone else's view - nobody's.
-     *
-     * Returns null if this route is unavailable or the payload is unfamiliar,
-     * so the caller falls back rather than reporting an empty wishlist.
+     * Reads the wishlist from the Steam client's signed-in store session, which
+     * works whatever the profile's privacy settings. The public API returns
+     * `{"response":{}}` for both empty and hidden wishlists, so it's only a
+     * fallback. Uses the page's fetch, since Decky's fetchNoCors has no Steam
+     * session. Returns null so the caller falls back.
      */
     private async fetchWishlistFromClient(): Promise<{ appIds: string[]; total: number } | null> {
         const pageFetch = this.pageFetch ?? (typeof fetch === "function" ? fetch : undefined);
@@ -215,11 +169,6 @@ class WishlistService {
         }
     }
 
-    // =========================================================================
-    // PART 5: Deal Check
-    // Purpose: Compare live prices against the user's discount threshold and
-    //          announce anything not already seen at that price.
-    // =========================================================================
 
     private async getMinDiscount(): Promise<number> {
         const raw = await SETTINGS.load(Setting.WISHLIST_MIN_DISCOUNT);
@@ -315,17 +264,7 @@ class WishlistService {
         }
     }
 
-    // =========================================================================
-    // PART 6: Notification
-    // Purpose: Surface findings as Decky toasts without flooding the user.
-    // =========================================================================
-    /**
-     * Open a game's Steam store page in the Steam in-app browser.
-     *
-     * That page is where StoreInjector renders the DeckySales module, so a
-     * tapped notification lands on the full cross-store comparison rather than
-     * just telling the user a deal exists somewhere.
-     */
+    /** Open a game's store page, where the DeckySales panel shows the comparison. */
     private navigateTo(url: string) {
         try {
             Navigation.CloseSideMenus();
@@ -337,14 +276,7 @@ class WishlistService {
 
 
 
-    /**
-     * Open the in-plugin deals list.
-     *
-     * A summary toast names one game but stands for many, so it leads to the
-     * list of everything found rather than to a single store page. Steam's own
-     * wishlist was the other candidate, but it shows Steam prices only - it
-     * would not display the non-Steam deals the notification was about.
-     */
+    /** Open the deals list; a summary toast stands for several games. */
     private openDealsList() {
         try {
             Navigation.CloseSideMenus();
@@ -391,13 +323,8 @@ class WishlistService {
     }
 
     /**
-     * Forget which deals have already been announced, so the next check
-     * re-announces everything currently on sale.
-     *
-     * The seeded flag is deliberately left set: clearing it would make the next
-     * pass a silent first run again, which is the opposite of what someone
-     * asking to be re-told wants (and would make this useless for verifying
-     * that notifications work at all).
+     * Forget announced deals so the next check re-announces current sales.
+     * The seeded flag stays set, or the next check would be silent again.
      */
     public async resetAlertHistory() {
         await SETTINGS.save(Setting.WISHLIST_SEEN, {});
