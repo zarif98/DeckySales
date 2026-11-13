@@ -308,3 +308,15 @@ describe("deals list", () => {
         expect(storePageUrlFor("1086940")).toBe("https://store.steampowered.com/app/1086940/");
     });
 });
+
+describe("normalizeDeals tie-break", () => {
+    const raw = (shopId: number, amount: number) => ({ shop: { id: shopId, name: `s${shopId}` }, price: { amount, currency: "USD" }, cut: 0 });
+
+    it("puts Steam first when another store matches its price", () => {
+        expect(normalizeDeals([raw(37, 39.99), raw(61, 39.99)])[0].storeId).toBe(61);
+    });
+
+    it("still puts a strictly cheaper store ahead of Steam", () => {
+        expect(normalizeDeals([raw(61, 39.99), raw(37, 29.99)])[0].storeId).toBe(37);
+    });
+});

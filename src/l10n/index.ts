@@ -2,12 +2,11 @@ import { en } from "./en";
 import { ru } from "./ru";
 import { uk } from "./uk";
 
-// Currently only English is supported.
+// The language follows the Steam client (see utils/SteamLocale.ts).
 // To add a new language:
-//   1. Copy template.ts → <lang>.ts (e.g. de.ts)
-//   2. Fill in all the translated strings
-//   3. Import it here and add to the `locales` map
-//   4. Wire up a language setting in Settings.ts + DeckyMenuOption.tsx
+//   1. Copy template.ts → <lang>.ts (e.g. de.ts) and translate it
+//   2. Import it here and add it to `locales`
+//   3. Map Steam's language name to it in utils/SteamLocale.ts
 
 const locales: Record<string, Record<string, string>> = {
     en, ru, uk,
@@ -30,12 +29,5 @@ export function t(key: string): string {
     return locales[currentLocale]?.[key] ?? locales["en"]?.[key] ?? key;
 }
 
-/**
- * Get all available locales with their display names.
- */
-export function getAvailableLocales(): { data: string; label: string }[] {
-    return Object.keys(locales).map(code => ({
-        data: code,
-        label: locales[code]["language.name"] || code
-    }));
-}
+/** Locale codes the plugin ships translations for. */
+export const AVAILABLE_LOCALES: readonly string[] = Object.keys(locales);

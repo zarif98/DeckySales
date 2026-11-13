@@ -17,14 +17,11 @@
 // =============================================================================
 
 export const LANG_CODE: Record<string, string> = {
-    "plugin.title": "",
-    "language.name": "",
     // Settings UI
     "settings.general.title": "",
     "settings.display.title": "",
     "settings.region.title": "",
     "settings.about.title": "",
-    "settings.language.title": "",
     "settings.common.selectedPrefix": "",
     "settings.enable.label": "",
     "settings.enable.description": "",
@@ -52,10 +49,8 @@ export const LANG_CODE: Record<string, string> = {
     "settings.stores.howItWorksBody1": "",
     "settings.stores.howItWorksBody2": "",
     "settings.stores.howItWorksBody3": "",
-    "settings.stores.selectedHeader": "",
     "settings.stores.showAllForCountry": "",
     "settings.stores.hideAllForCountry": "",
-    "settings.stores.allAvailableHeader": "",
     "settings.stores.count": "",
     "settings.stores.selectedBadge": "",
     "settings.stores.availableBadge": "",
@@ -73,7 +68,6 @@ export const LANG_CODE: Record<string, string> = {
     "settings.provider.selected": "",
     "settings.provider.showListLabel": "",
     "settings.provider.noneSelected": "",
-    "settings.language.label": "",
     "settings.api.title": "",
     "settings.api.itadKey.label": "",
     "settings.api.itadKey.description": "",

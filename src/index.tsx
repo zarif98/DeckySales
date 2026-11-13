@@ -1,4 +1,3 @@
-import { staticClasses } from "@decky/ui";
 import { definePlugin, routerHook } from "@decky/api";
 import { FaChartLine } from "react-icons/fa";
 
@@ -9,12 +8,18 @@ import { Cache } from "./utils/Cache";
 import { Settings } from "./utils/Settings";
 import { DEALS_ROUTE } from "./utils/Deals";
 import { wishlistService } from "./service/WishlistService";
-import { t } from "./l10n";
+import { AVAILABLE_LOCALES, setLocale } from "./l10n";
+import { detectSteamLanguage, localeForSteamLanguage } from "./utils/SteamLocale";
 
 
 export default definePlugin(() => {
   Cache.init()
   Settings.init()
+
+  void detectSteamLanguage().then(language => {
+    const locale = localeForSteamLanguage(language, AVAILABLE_LOCALES);
+    if (locale) setLocale(locale);
+  });
 
   void wishlistService.start()
 
@@ -27,7 +32,6 @@ export default definePlugin(() => {
 
   return {
     name: "DeckySales",
-    titleView: <div className={staticClasses.Title}>{t("plugin.title")}</div>,
     content: <DeckyMenuOption />,
     icon: <FaChartLine />,
     onDismount() {

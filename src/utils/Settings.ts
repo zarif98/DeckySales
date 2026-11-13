@@ -1,6 +1,8 @@
 import { call } from "@decky/api";
 import { CACHE } from "./Cache";
 import { ALL_STORE_IDS } from "./Stores";
+import { CURRENCY_METADATA } from "./CurrencyMeta";
+import { detectSteamCountry, supportedCountry } from "./SteamLocale";
 
 export enum Setting {
   FONTSIZE = "fontSize",
@@ -13,7 +15,6 @@ export enum Setting {
   SHOW_PREDICTIONS = "showPredictions",
   PROVIDERS = "providers",
   HISTORY_RANGE = "historyRange",
-  LOCALE = "locale",
   ITAD_API_KEY = "itadApiKey",
   WISHLIST_ALERTS = "wishlistAlerts",
   WISHLIST_MIN_DISCOUNT = "wishlistMinDiscount",
@@ -63,7 +64,6 @@ export class Settings {
     showPredictions: true,
     providers: ["itad"],
     historyRange: "1y",
-    locale: "en",
     itadApiKey: "",
     wishlistAlerts: true,
     wishlistMinDiscount: 20,
@@ -74,11 +74,19 @@ export class Settings {
     wishlistLastCheck: 0,
   };
 
+  // Resolves once the default country has been taken from Steam.
+  private ready: Promise<void> = Promise.resolve();
+
   static init() {
     SETTINGS = new Settings()
+    SETTINGS.ready = detectSteamCountry().then(code => {
+      const country = supportedCountry(code, Object.keys(CURRENCY_METADATA));
+      if (country) SETTINGS.defaults.country = country;
+    });
   }
 
   async load(key: Setting) {
+    await this.ready
     const cacheValue = await CACHE.loadValue(key)
     if (cacheValue) {
       return cacheValue

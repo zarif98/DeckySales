@@ -1,4 +1,4 @@
-import { STORES } from "./Stores";
+import { STEAM_STORE_ID, STORES } from "./Stores";
 
 /*
  * Pure deal logic, deliberately free of network and Decky dependencies so it
@@ -49,7 +49,8 @@ export function normalizeDeals(rawDeals: unknown): Deal[] {
     return rawDeals
         .map(normalizeDeal)
         .filter((d): d is Deal => d !== null)
-        .sort((a, b) => a.amount - b.amount);
+        // On a tie, Steam first: "best now" shouldn't name another store at Steam's price.
+        .sort((a, b) => a.amount - b.amount || Number(b.storeId === STEAM_STORE_ID) - Number(a.storeId === STEAM_STORE_ID));
 }
 
 /**

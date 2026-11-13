@@ -1,4 +1,4 @@
-import { Focusable, Navigation, PanelSection, PanelSectionRow, staticClasses } from "@decky/ui";
+import { Field, Navigation, PanelSection, PanelSectionRow } from "@decky/ui";
 import { useEffect, useState } from "react";
 import { SETTINGS, Setting } from "../utils/Settings";
 import { RowDeal, formatRowPrice, sortRowDeals, storePageUrlFor } from "../utils/Deals";
@@ -84,40 +84,17 @@ const DealsPage = () => {
                 )}
 
                 {rows.map(({ appId, deal }) => (
-                    <PanelSectionRow key={appId}>
-                        <Focusable
-                            onActivate={() => openStorePage(appId)}
-                            style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                gap: "12px",
-                                padding: "10px 12px",
-                                borderRadius: "6px",
-                                background: "rgba(255,255,255,0.04)",
-                                marginBottom: "6px",
-                            }}
-                        >
-                            <div style={{ minWidth: 0 }}>
-                                <div className={staticClasses.Text} style={{ fontSize: "15px", overflowWrap: "anywhere" }}>
-                                    {deal.title || appId}
-                                </div>
-                                <div style={{ fontSize: "12px", color: "#67c1f5", marginTop: "2px" }}>
-                                    {formatRowPrice(deal, t("deals.priceLine"))}
-                                </div>
-                            </div>
-                            <div
-                                style={{
-                                    flexShrink: 0,
-                                    fontSize: "15px",
-                                    fontWeight: "bold",
-                                    color: "#beee11",
-                                }}
-                            >
-                                -{deal.cut}%
-                            </div>
-                        </Focusable>
-                    </PanelSectionRow>
+                    <Field
+                        key={appId}
+                        focusable
+                        highlightOnFocus
+                        onActivate={() => openStorePage(appId)}
+                        onClick={() => openStorePage(appId)}
+                        label={deal.title || appId}
+                        description={formatRowPrice(deal, t("deals.priceLine"))}
+                    >
+                        <span style={{ fontWeight: "bold", color: "#beee11" }}>-{deal.cut}%</span>
+                    </Field>
                 ))}
 
                 {!loading && rows.length > 0 && (

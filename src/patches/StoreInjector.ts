@@ -129,7 +129,7 @@ export const injectStore = () => {
                         
                         <div class="DeckySales-info" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                             <!-- Row 1, Col 1: Current Price -->
-                            <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                            <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                                 <div style="font-size: 10px; color: #8f98a0; margin-bottom: 2px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">${t("store.currentPrice")}</div>
                                 <div style="font-size: 15px; color: #fff; font-weight: bold; margin-bottom: 0px;">
                                     <span id="dd-current-${appId}">${t("store.loading")}</span>
@@ -140,7 +140,7 @@ export const injectStore = () => {
                             </div>
 
                             <!-- Row 1, Col 2: Best price available right now -->
-                            <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                            <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                                 <div style="font-size: 10px; color: #8f98a0; margin-bottom: 2px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">${t("store.bestNow")}</div>
                                 <div style="font-size: 15px; color: #fff; font-weight: bold; margin-bottom: 0px;">
                                     <span id="dd-lowest-${appId}">${t("store.loading")}</span>
@@ -160,7 +160,7 @@ export const injectStore = () => {
                         </div>
 
                         <!-- Graph Container -->
-                        <div id="DeckySales-content-${appId}" style="background: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 2px; margin-bottom: 10px;">
+                        <div id="DeckySales-content-${appId}" style="background: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 4px; margin-bottom: 10px;">
                             <div class="DeckySales-graph-container" style="position: relative; height: 60px; width: 100%; margin: 0 0 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
                                 <div id="dd-graph-${appId}" style="width: 100%; height: 100%; display: flex; align-items: flex-end;">
                                     <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #666; font-size: 12px;">${t("store.loadingGraph")}</div>
@@ -181,10 +181,10 @@ export const injectStore = () => {
                         </div>
                         
                         <div class="DeckySales-actions" id="dd-actions-${appId}" style="display: ${displayStyle}; gap: 10px;">
-                            <a class="btn_blue_steamui btn_medium" href="${steamDBUrl}" target="_blank" style="padding: 6px 12px; font-size: 13px; flex: 1; text-align: center; text-decoration: none; color: white; border-radius: 2px;">
+                            <a class="btn_blue_steamui btn_medium" href="${steamDBUrl}" target="_blank" style="padding: 6px 12px; font-size: 13px; flex: 1; text-align: center; text-decoration: none; color: white; border-radius: 4px;">
                                 <span>${t("store.quickLinkSteamDb")}</span>
                             </a>
-                            <a class="btn_blue_steamui btn_medium" href="#" id="dd-itad-link-${appId}" target="_blank" style="padding: 6px 12px; font-size: 13px; flex: 1; text-align: center; text-decoration: none; color: white; border-radius: 2px;">
+                            <a class="btn_blue_steamui btn_medium" href="#" id="dd-itad-link-${appId}" target="_blank" style="padding: 6px 12px; font-size: 13px; flex: 1; text-align: center; text-decoration: none; color: white; border-radius: 4px;">
                                 <span>${t("store.quickLinkItad")}</span>
                             </a>
                         </div>
@@ -334,12 +334,12 @@ export const injectStore = () => {
                     if (!el) return;
                     el.style.background = 'rgba(0,0,0,0.2)';
                     el.style.padding = '8px 12px';
-                    el.style.borderRadius = '6px';
+                    el.style.borderRadius = '4px';
                     el.style.display = 'flex';
                     el.style.flexDirection = 'column';
                     el.style.alignItems = 'center';
                     el.style.justifyContent = 'center';
-                    el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+                    el.style.boxShadow = 'none';
                 };
 
                 applyBadgeStyle(infoBox1);

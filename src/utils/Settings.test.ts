@@ -97,3 +97,28 @@ describe("Settings with a working backend", () => {
         await expect(SETTINGS.load(Setting.WISHLIST_MIN_DISCOUNT)).resolves.toBe(20);
     });
 });
+
+describe("default country from Steam", () => {
+    afterEach(() => { delete (globalThis as any).SteamClient; });
+
+    it("uses Steam's country when the user has not chosen one", async () => {
+        (globalThis as any).SteamClient = { User: { GetIPCountry: async () => "DE" } };
+        const { SETTINGS, Setting } = await boot(async (_method, _key, value) => value);
+
+        expect(await SETTINGS.load(Setting.COUNTRY)).toBe("DE");
+    });
+
+    it("keeps a country the user picked", async () => {
+        (globalThis as any).SteamClient = { User: { GetIPCountry: async () => "DE" } };
+        const { SETTINGS, Setting } = await boot(async (_method, key, value) => (key === "country" ? "GB" : value));
+
+        expect(await SETTINGS.load(Setting.COUNTRY)).toBe("GB");
+    });
+
+    it("falls back to US for a country without price data", async () => {
+        (globalThis as any).SteamClient = { User: { GetIPCountry: async () => "ZZ" } };
+        const { SETTINGS, Setting } = await boot(async (_method, _key, value) => value);
+
+        expect(await SETTINGS.load(Setting.COUNTRY)).toBe("US");
+    });
+});

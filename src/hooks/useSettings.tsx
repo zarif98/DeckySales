@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { SETTINGS, Setting } from "../utils/Settings";
-import { setLocale } from "../l10n";
 import { wishlistService } from "../service/WishlistService";
 
 export function useSettings() {
@@ -14,7 +13,6 @@ export function useSettings() {
   const [showPredictions, setShowPredictions] = useState<boolean>(SETTINGS.defaults.showPredictions);
   const [providers, setProviders] = useState<string[]>(SETTINGS.defaults.providers);
   const [historyRange, setHistoryRange] = useState<string>(SETTINGS.defaults.historyRange);
-  const [locale, setLocaleState] = useState<string>(SETTINGS.defaults.locale);
   const [wishlistAlerts, setWishlistAlerts] = useState<boolean>(SETTINGS.defaults.wishlistAlerts);
   const [wishlistMinDiscount, setWishlistMinDiscount] = useState<number>(SETTINGS.defaults.wishlistMinDiscount);
   const [wishlistCheckHours, setWishlistCheckHours] = useState<number>(SETTINGS.defaults.wishlistCheckHours);
@@ -78,13 +76,6 @@ export function useSettings() {
       const loadedItadKey = await SETTINGS.load(Setting.ITAD_API_KEY);
       if (!mounted) return;
       if (loadedItadKey !== undefined) setItadApiKey(String(loadedItadKey));
-
-      const loadedLocale = await SETTINGS.load(Setting.LOCALE);
-      if (!mounted) return;
-      if (loadedLocale) {
-        setLocaleState(String(loadedLocale));
-        setLocale(String(loadedLocale));
-      }
     }
 
     loadAll();
@@ -187,12 +178,6 @@ export function useSettings() {
     SETTINGS.save(Setting.ITAD_API_KEY, trimmed);
   }
 
-  const saveLocale = (l: string) => {
-    setLocaleState(l);
-    setLocale(l);
-    SETTINGS.save(Setting.LOCALE, l);
-  }
-
   return {
     fontSize,
     saveFontSize,
@@ -215,8 +200,6 @@ export function useSettings() {
     toggleProvider,
     historyRange,
     saveHistoryRange,
-    locale,
-    saveLocale,
     wishlistAlerts,
     toggleWishlistAlerts,
     wishlistMinDiscount,
